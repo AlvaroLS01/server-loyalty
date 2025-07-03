@@ -236,14 +236,14 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                                                 "La tarjeta ya está asociada a un fidelizado");
                         }
 
-                        if (loyalCustomer.getCollectives() == null) {
-                                loyalCustomer.setCollectives(new java.util.ArrayList<>());
+                       if (loyalCustomer.getCollectives() == null) {
+                               loyalCustomer.setCollectives(new java.util.ArrayList<>());
                         }
                         boolean hasReg = loyalCustomer.getCollectives().stream()
                                         .anyMatch(c -> "REG".equalsIgnoreCase(c.getCollectiveCode()));
                         if (!hasReg) {
-                                com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveKey reg =
-                                                new com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveKey();
+                                com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO reg =
+                                                new com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO();
                                 reg.setCollectiveCode("REG");
                                 loyalCustomer.getCollectives().add(reg);
                         }
@@ -252,6 +252,39 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                         loyalCustomer.setLyCustomerCode(dbCustomer.getLyCustomerCode());
 
                         mapper.updateByPrimaryKey(loyalCustomer);
+
+                        if (loyalCustomer.getContacts() != null) {
+                                for (LoyalCustomerContactEntity contact : loyalCustomer.getContacts()) {
+                                        contact.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                                        contactsService.insert(contact, datosSesion);
+                                }
+                        }
+
+                        if (loyalCustomer.getCustomerLink() != null) {
+                                loyalCustomer.getCustomerLink().setLyCustomerId(loyalCustomer.getLyCustomerId());
+                                loyalCustomer.getCustomerLink().setActivityUid(datosSesion.getUidActividad());
+                                linksService.insert(loyalCustomer.getCustomerLink(), datosSesion);
+                        }
+
+                        if (loyalCustomer.getAccess() != null) {
+                                loyalCustomer.getAccess().setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                                accessService.insert(loyalCustomer.getAccess(), datosSesion);
+                        }
+
+                        if (loyalCustomer.getCollectives() != null) {
+                                for (com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO collective : loyalCustomer.getCollectives()) {
+                                        collective.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                                        collectivesService.insert(collective, datosSesion);
+                                }
+                        }
+
+                        if (loyalCustomer.getTags() != null) {
+                                for (EtiquetaBean tag : loyalCustomer.getTags()) {
+                                        tag.setIdClaseEtiquetaEnlazada("F_FIDELIZADOS_TBL.ID_FIDELIZADO");
+                                        tag.setIdObjetoEtiquetaEnlazada(loyalCustomer.getLyCustomerId().toString());
+                                        customerTagsService.insertTagLink(tag, datosSesion);
+                                }
+                        }
 
                         LoyalCustomerVersion loyalCustomerVersion = new LoyalCustomerVersion(loyalCustomer.getLyCustomerId());
                         fidVersionControlService.checkLoyalCustomersVersion(datosSesion, loyalCustomerVersion);
