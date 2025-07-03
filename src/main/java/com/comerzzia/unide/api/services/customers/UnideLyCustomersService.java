@@ -7,6 +7,18 @@ import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
 
 public interface UnideLyCustomersService extends LyCustomersService {
 
-	void deactivateLoyalCustomer(DeactivateCustomer deactivateModel, IDatosSesion datosSesion) throws ApiException;
+        void deactivateLoyalCustomer(DeactivateCustomer deactivateModel, IDatosSesion datosSesion) throws ApiException;
+
+        /**
+         * Associates an anonymous loyal customer with the personal information
+         * provided. The JSON structure matches the insert service.
+         *
+         * @param loyalCustomer full customer data
+         * @param datosSesion   session data
+         * @return updated customer information
+         */
+        com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO associateCustomer(
+                        com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO loyalCustomer,
+                        IDatosSesion datosSesion) throws ApiException;
 
 }

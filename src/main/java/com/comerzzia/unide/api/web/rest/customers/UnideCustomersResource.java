@@ -4,6 +4,7 @@ import javax.annotation.Resource;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.PUT;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
@@ -15,6 +16,7 @@ import com.comerzzia.api.core.service.exception.ApiException;
 import com.comerzzia.api.core.service.util.ComerzziaDatosSesion;
 import com.comerzzia.unide.api.services.customers.UnideLyCustomersService;
 import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
+import com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -31,9 +33,9 @@ public class UnideCustomersResource {
 	@Autowired
 	protected UnideLyCustomersService service;
 
-	@PUT
-	@Path("/{lyCustomerId}/deactivate")
-	public void deleteLoyalCustomer(@Valid DeactivateCustomer record) throws ApiException {
+        @PUT
+        @Path("/{lyCustomerId}/deactivate")
+        public void deleteLoyalCustomer(@Valid DeactivateCustomer record) throws ApiException {
 		try {
 			service.deactivateLoyalCustomer(record, datosSesionRequest.getDatosSesionBean());
 		}
@@ -42,6 +44,19 @@ public class UnideCustomersResource {
 		}
 		catch (Exception e) {
 			throw new ApiException(e.getMessage(), e);
-		}
-	}
+        }
+
+        @POST
+        @Path("/associateCustomer")
+        public LyCustomerDTO associateCustomer(@Valid LyCustomerDTO record) throws ApiException {
+                try {
+                        return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
+                }
+                catch (ApiException e) {
+                        throw e;
+                }
+                catch (Exception e) {
+                        throw new ApiException(e.getMessage(), e);
+                }
+        }
 }
