@@ -36,14 +36,15 @@ public class UnideCustomersResource {
         @PUT
         @Path("/{lyCustomerId}/deactivate")
         public void deleteLoyalCustomer(@Valid DeactivateCustomer record) throws ApiException {
-		try {
-			service.deactivateLoyalCustomer(record, datosSesionRequest.getDatosSesionBean());
-		}
-		catch (ApiException e) {
-			throw e;
-		}
-		catch (Exception e) {
-			throw new ApiException(e.getMessage(), e);
+                try {
+                        service.deactivateLoyalCustomer(record, datosSesionRequest.getDatosSesionBean());
+                }
+                catch (ApiException e) {
+                        throw e;
+                }
+                catch (Exception e) {
+                        throw new ApiException(e.getMessage(), e);
+                }
         }
 
         @POST

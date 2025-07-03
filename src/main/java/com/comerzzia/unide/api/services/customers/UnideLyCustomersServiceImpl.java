@@ -209,11 +209,11 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                 }
 
                 try {
-                        String cardCode = loyalCustomer.getCards().get(0).getCardCode();
+                String cardNumber = loyalCustomer.getCards().get(0).getCardNumber();
 
-                        com.comerzzia.api.loyalty.persistence.cards.CardExample cardExample =
-                                        new com.comerzzia.api.loyalty.persistence.cards.CardExample(datosSesion);
-                        cardExample.or().andCardCodeEqualTo(cardCode).andFechaBajaIsNull();
+                com.comerzzia.api.loyalty.persistence.cards.CardExample cardExample =
+                                new com.comerzzia.api.loyalty.persistence.cards.CardExample(datosSesion);
+                cardExample.or().andNumeroTarjetaEqualTo(cardNumber).andFechaBajaIsNull();
 
                         List<CardEntity> cards = cardsService.selectByExample(datosSesion, cardExample);
                         if (cards.isEmpty()) {
@@ -242,8 +242,8 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                         boolean hasReg = loyalCustomer.getCollectives().stream()
                                         .anyMatch(c -> "REG".equalsIgnoreCase(c.getCollectiveCode()));
                         if (!hasReg) {
-                                com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveEntity reg =
-                                                new com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveEntity();
+                                com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveKey reg =
+                                                new com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveKey();
                                 reg.setCollectiveCode("REG");
                                 loyalCustomer.getCollectives().add(reg);
                         }
@@ -256,7 +256,7 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                         LoyalCustomerVersion loyalCustomerVersion = new LoyalCustomerVersion(loyalCustomer.getLyCustomerId());
                         fidVersionControlService.checkLoyalCustomersVersion(datosSesion, loyalCustomerVersion);
 
-                        return selectByPrimaryKey(datosSesion, loyalCustomer.getLyCustomerId());
+                        return selectDTOByPrimaryKey(loyalCustomer.getLyCustomerId(), datosSesion);
                 }
                 catch (ApiException e) {
                         throw e;
