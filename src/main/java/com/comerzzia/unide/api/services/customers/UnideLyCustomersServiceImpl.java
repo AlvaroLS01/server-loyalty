@@ -197,15 +197,15 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                 }
 
                 if (loyalCustomer.getCards() == null || loyalCustomer.getCards().isEmpty() ||
-                                StringUtils.isBlank(loyalCustomer.getCards().get(0).getCardCode())) {
+                                StringUtils.isBlank(loyalCustomer.getCards().get(0).getCardNumber())) {
                         throw new BadRequestException("No se ha indicado la tarjeta de fidelizacion");
                 }
 
-                if (loyalCustomer.getNewCustomerAccess() != null &&
-                                StringUtils.isNotBlank(loyalCustomer.getNewCustomerAccess().getUser())) {
-                        String user = loyalCustomer.getNewCustomerAccess().getUser();
+                if (loyalCustomer.getAccess() != null &&
+                                StringUtils.isNotBlank(loyalCustomer.getAccess().getUser())) {
+                        String user = loyalCustomer.getAccess().getUser();
                         user = user.replace("_", "").replace("@", "");
-                        loyalCustomer.getNewCustomerAccess().setUser(user);
+                        loyalCustomer.getAccess().setUser(user);
                 }
 
                 try {
@@ -221,12 +221,12 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                         }
 
                         CardEntity card = cards.get(0);
-                        if (card.getLoyalCustomerId() == null) {
+                        if (card.getLyCustomerId() == null) {
                                 throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE,
                                                 "Tarjeta sin fidelizado asociado");
                         }
 
-                        LyCustomerEntity dbCustomer = selectByPrimaryKey(datosSesion, card.getLoyalCustomerId());
+                        LyCustomerEntity dbCustomer = selectByPrimaryKey(datosSesion, card.getLyCustomerId());
                         if (dbCustomer == null) {
                                 throw new NotFoundException();
                         }
