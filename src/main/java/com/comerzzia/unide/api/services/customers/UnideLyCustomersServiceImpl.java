@@ -109,7 +109,7 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
-	public void deactivateLoyalCustomer(DeactivateCustomer deactivateModel, IDatosSesion datosSesion) throws ApiException {
+        public void deactivateLoyalCustomer(DeactivateCustomer deactivateModel, IDatosSesion datosSesion) throws ApiException {
 		if(deactivateModel == null) throw new BadRequestException("La peticion es vacía o nula");
 		
 		LyCustomerEntity loyalCustomer = selectByPrimaryKey(datosSesion, deactivateModel.getLyCustomerId());
@@ -185,7 +185,123 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 			log.error("deactivateLoyalCustomer() - " + msg, e);
 
 			throw new ApiException(msg, e);
-		}
+                }
 
-	}
+        }
+
+        @Override
+        @Transactional(rollbackFor = Exception.class)
+        public LyCustomerDTO associateCustomer(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion) throws ApiException {
+                if (loyalCustomer == null) {
+                        throw new BadRequestException("La peticion es vacía o nula");
+                }
+
+                if (loyalCustomer.getCards() == null || loyalCustomer.getCards().isEmpty() ||
+                                StringUtils.isBlank(loyalCustomer.getCards().get(0).getCardNumber())) {
+                        throw new BadRequestException("No se ha indicado la tarjeta de fidelizacion");
+                }
+
+                if (loyalCustomer.getAccess() != null &&
+                                StringUtils.isNotBlank(loyalCustomer.getAccess().getUser())) {
+                        String user = loyalCustomer.getAccess().getUser();
+                        user = user.replace("_", "").replace("@", "");
+                        loyalCustomer.getAccess().setUser(user);
+                }
+
+                try {
+                String cardNumber = loyalCustomer.getCards().get(0).getCardNumber();
+
+                com.comerzzia.api.loyalty.persistence.cards.CardExample cardExample =
+                                new com.comerzzia.api.loyalty.persistence.cards.CardExample(datosSesion);
+                cardExample.or().andNumeroTarjetaEqualTo(cardNumber).andFechaBajaIsNull();
+
+                        List<CardEntity> cards = cardsService.selectByExample(datosSesion, cardExample);
+                        if (cards.isEmpty()) {
+                                throw new NotFoundException();
+                        }
+
+                        CardEntity card = cards.get(0);
+                        if (card.getLyCustomerId() == null) {
+                                throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE,
+                                                "Tarjeta sin fidelizado asociado");
+                        }
+
+                        LyCustomerEntity dbCustomer = selectByPrimaryKey(datosSesion, card.getLyCustomerId());
+                        if (dbCustomer == null) {
+                                throw new NotFoundException();
+                        }
+
+                        if (StringUtils.isNotBlank(dbCustomer.getName()) || StringUtils.isNotBlank(dbCustomer.getLastName())) {
+                                throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE,
+                                                "La tarjeta ya está asociada a un fidelizado");
+                        }
+
+                       if (loyalCustomer.getCollectives() == null) {
+                               loyalCustomer.setCollectives(new java.util.ArrayList<>());
+                        }
+                        boolean hasReg = loyalCustomer.getCollectives().stream()
+                                        .anyMatch(c -> "REG".equalsIgnoreCase(c.getCollectiveCode()));
+                        if (!hasReg) {
+                                com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO reg =
+                                                new com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO();
+                                reg.setCollectiveCode("REG");
+                                loyalCustomer.getCollectives().add(reg);
+                        }
+
+                        loyalCustomer.setLyCustomerId(dbCustomer.getLyCustomerId());
+                        loyalCustomer.setLyCustomerCode(dbCustomer.getLyCustomerCode());
+
+                        mapper.updateByPrimaryKey(loyalCustomer);
+
+                        if (loyalCustomer.getContacts() != null) {
+                                for (LoyalCustomerContactEntity contact : loyalCustomer.getContacts()) {
+                                        contact.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                                        contactsService.insert(contact, datosSesion);
+                                }
+                        }
+
+                        if (loyalCustomer.getCustomerLink() != null) {
+                                loyalCustomer.getCustomerLink().setLyCustomerId(loyalCustomer.getLyCustomerId());
+                                loyalCustomer.getCustomerLink().setActivityUid(datosSesion.getUidActividad());
+                                linksService.insert(loyalCustomer.getCustomerLink(), datosSesion);
+                        }
+
+                        if (loyalCustomer.getAccess() != null) {
+                                loyalCustomer.getAccess().setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                                accessService.insert(loyalCustomer.getAccess(), datosSesion);
+                        }
+
+                        if (loyalCustomer.getCollectives() != null) {
+                                for (com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO collective : loyalCustomer.getCollectives()) {
+                                        collective.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                                        collectivesService.insert(collective, datosSesion);
+                                }
+                        }
+
+                        if (loyalCustomer.getTags() != null) {
+                                for (EtiquetaBean tag : loyalCustomer.getTags()) {
+                                        tag.setIdClaseEtiquetaEnlazada("F_FIDELIZADOS_TBL.ID_FIDELIZADO");
+                                        tag.setIdObjetoEtiquetaEnlazada(loyalCustomer.getLyCustomerId().toString());
+                                        customerTagsService.insertTagLink(tag, datosSesion);
+                                }
+                        }
+
+                        LoyalCustomerVersion loyalCustomerVersion = new LoyalCustomerVersion(loyalCustomer.getLyCustomerId());
+                        fidVersionControlService.checkLoyalCustomersVersion(datosSesion, loyalCustomerVersion);
+
+                        return selectDTOByPrimaryKey(loyalCustomer.getLyCustomerId(), datosSesion);
+                }
+                catch (ApiException e) {
+                        throw e;
+                }
+                catch (PersistenceException e) {
+                        if (PersistenceExceptionFactory.getPersistenceExpception(e).isConstraintViolationException()) {
+                                throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, e.getMessage());
+                        }
+                        throw new ApiException(e.getMessage(), e);
+                }
+                catch (Exception e) {
+                        throw new ApiException(e.getMessage(), e);
+                }
+        }
 }
