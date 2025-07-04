@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.ibatis.exceptions.PersistenceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ import com.comerzzia.core.servicios.sesion.IDatosSesion;
 import com.comerzzia.core.servicios.variables.VariableException;
 import com.comerzzia.core.servicios.variables.VariableNotFoundException;
 import com.comerzzia.core.util.criptografia.CriptoException;
+import com.comerzzia.core.servicios.variables.VariablesService;
 import com.comerzzia.core.util.mybatis.exception.PersistenceExceptionFactory;
 import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
 
@@ -37,10 +40,17 @@ import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
 @Primary
 public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implements UnideLyCustomersService {
 
-	private static final String LOYAL_CUSTOMER_CARD_TYPE = "A";
-	
-	@Autowired
-	protected LoyalCustomerContactMapper mapperContact;
+        private static final Logger log = LoggerFactory.getLogger(UnideLyCustomersServiceImpl.class);
+
+        public static final String COD_COLECTIVO_REGISTRO = "X_FIDELIZADOS.COD_COLECTIVO_REGISTRO";
+
+        private static final String LOYAL_CUSTOMER_CARD_TYPE = "A";
+
+        @Autowired
+        protected LoyalCustomerContactMapper mapperContact;
+
+        @Autowired
+        protected VariablesService variableService;
 
 	@Override
 	public LyCustomerDTO insert(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion)
@@ -210,6 +220,7 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 
                 try {
                 String cardNumber = loyalCustomer.getCards().get(0).getCardNumber();
+                log.debug("associateCustomer() - Processing card " + cardNumber);
 
                 com.comerzzia.api.loyalty.persistence.cards.CardExample cardExample =
                                 new com.comerzzia.api.loyalty.persistence.cards.CardExample(datosSesion);
@@ -239,12 +250,16 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                        if (loyalCustomer.getCollectives() == null) {
                                loyalCustomer.setCollectives(new java.util.ArrayList<>());
                         }
+
+                        String collectiveRegCode = variableService.consultarValor(datosSesion, COD_COLECTIVO_REGISTRO);
+                        log.debug("associateCustomer() - Using collective code " + collectiveRegCode);
+
                         boolean hasReg = loyalCustomer.getCollectives().stream()
-                                        .anyMatch(c -> "REG".equalsIgnoreCase(c.getCollectiveCode()));
+                                        .anyMatch(c -> collectiveRegCode.equalsIgnoreCase(c.getCollectiveCode()));
                         if (!hasReg) {
                                 com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO reg =
                                                 new com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO();
-                                reg.setCollectiveCode("REG");
+                                reg.setCollectiveCode(collectiveRegCode);
                                 loyalCustomer.getCollectives().add(reg);
                         }
 

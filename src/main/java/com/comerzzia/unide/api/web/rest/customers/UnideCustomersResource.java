@@ -11,6 +11,8 @@ import javax.ws.rs.core.MediaType;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.comerzzia.api.core.service.exception.ApiException;
 import com.comerzzia.api.core.service.util.ComerzziaDatosSesion;
@@ -26,6 +28,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
 @Controller
 public class UnideCustomersResource {
+
+        protected static final Logger log = LoggerFactory.getLogger(UnideCustomersResource.class);
 
 	@Resource(name = "datosSesionRequest")
 	protected ComerzziaDatosSesion datosSesionRequest;
@@ -51,6 +55,7 @@ public class UnideCustomersResource {
         @Path("/associateCustomer")
         public LyCustomerDTO associateCustomer(@Valid LyCustomerDTO record) throws ApiException {
                 try {
+                        log.debug("associateCustomer() - Associating customer");
                         return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
                 }
                 catch (ApiException e) {
