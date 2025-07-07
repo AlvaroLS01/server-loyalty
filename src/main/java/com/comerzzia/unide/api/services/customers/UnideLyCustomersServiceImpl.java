@@ -20,7 +20,7 @@ import com.comerzzia.api.loyalty.persistence.customers.LyCustomerExample;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactEntity;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactExample;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactMapper;
-import com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveKey;
+import com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO;
 import com.comerzzia.api.loyalty.service.customers.LyCustomersServiceImpl;
 import com.comerzzia.api.loyalty.service.customers.versioning.LoyalCustomerVersion;
 import com.comerzzia.api.loyalty.web.rest.customers.CustomerTagsResource;
@@ -211,7 +211,7 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 
             String regCode = variablesService.consultarValor(datosSesion, COD_COLECTIVO_REGISTRO);
             if (StringUtils.isNotBlank(regCode)) {
-                LoyalCustomerCollectiveKey collective = new LoyalCustomerCollectiveKey();
+                LoyalCustomerCollectiveDTO collective = new LoyalCustomerCollectiveDTO();
                 collective.setCollectiveCode(regCode);
                 if (loyalCustomer.getCollectives() == null) {
                     loyalCustomer.setCollectives(new java.util.ArrayList<>());
@@ -247,7 +247,7 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
             }
 
             if (loyalCustomer.getCollectives() != null) {
-                for (LoyalCustomerCollectiveKey col : loyalCustomer.getCollectives()) {
+                for (LoyalCustomerCollectiveDTO col : loyalCustomer.getCollectives()) {
                     col.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
                     collectivesService.insert(col, datosSesion);
                 }
