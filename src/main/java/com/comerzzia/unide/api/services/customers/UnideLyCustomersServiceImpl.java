@@ -20,6 +20,7 @@ import com.comerzzia.api.loyalty.persistence.customers.LyCustomerExample;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactEntity;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactExample;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactMapper;
+import com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveKey;
 import com.comerzzia.api.loyalty.service.customers.LyCustomersServiceImpl;
 import com.comerzzia.api.loyalty.service.customers.versioning.LoyalCustomerVersion;
 import com.comerzzia.api.loyalty.web.rest.customers.CustomerTagsResource;
@@ -37,7 +38,8 @@ import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
 @Primary
 public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implements UnideLyCustomersService {
 
-	private static final String LOYAL_CUSTOMER_CARD_TYPE = "A";
+    private static final String LOYAL_CUSTOMER_CARD_TYPE = "A";
+    public static final String COD_COLECTIVO_REGISTRO = "X_FIDELIZADOS.COD_COLECTIVO_REGISTRO";
 	
 	@Autowired
 	protected LoyalCustomerContactMapper mapperContact;
@@ -184,8 +186,89 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 			String msg = "Error dando de baja el fidelizado: " + e.getMessage();
 			log.error("deactivateLoyalCustomer() - " + msg, e);
 
-			throw new ApiException(msg, e);
-		}
+        throw new ApiException(msg, e);
+                }
 
-	}
+        }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public LyCustomerDTO associateCustomer(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion) throws ApiException {
+        try {
+            if (loyalCustomer == null || loyalCustomer.getCards() == null || loyalCustomer.getCards().isEmpty()
+                    || StringUtils.isBlank(loyalCustomer.getCards().get(0).getCardNumber())) {
+                throw new BadRequestException("Card number is mandatory");
+            }
+
+            String cardNumber = loyalCustomer.getCards().get(0).getCardNumber();
+            CardEntity card = cardsService.selectByCardNumber(cardNumber, datosSesion);
+            LyCustomerDTO anonymous = selectDTOByPrimaryKey(card.getLyCustomerId(), datosSesion);
+
+            if (StringUtils.isNotBlank(anonymous.getName()) || StringUtils.isNotBlank(anonymous.getLastName())) {
+                throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE,
+                        "Card already associated to a customer");
+            }
+
+            String regCode = variablesService.consultarValor(datosSesion, COD_COLECTIVO_REGISTRO);
+            if (StringUtils.isNotBlank(regCode)) {
+                LoyalCustomerCollectiveKey collective = new LoyalCustomerCollectiveKey();
+                collective.setCollectiveCode(regCode);
+                if (loyalCustomer.getCollectives() == null) {
+                    loyalCustomer.setCollectives(new java.util.ArrayList<>());
+                }
+                loyalCustomer.getCollectives().add(collective);
+            }
+
+            if (loyalCustomer.getAccess() != null && StringUtils.isNotBlank(loyalCustomer.getAccess().getUser())) {
+                loyalCustomer.getAccess().setUser(loyalCustomer.getAccess().getUser().replace("_", "").replace("@", ""));
+            }
+
+            loyalCustomer.setLyCustomerId(anonymous.getLyCustomerId());
+            loyalCustomer.setLyCustomerCode(anonymous.getLyCustomerCode());
+
+            super.update(modelMapper.map(loyalCustomer, LyCustomerEntity.class), datosSesion);
+
+            if (loyalCustomer.getContacts() != null) {
+                for (LoyalCustomerContactEntity contact : loyalCustomer.getContacts()) {
+                    contact.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                    contactsService.insert(contact, datosSesion);
+                }
+            }
+
+            if (loyalCustomer.getCustomerLink() != null) {
+                loyalCustomer.getCustomerLink().setLyCustomerId(loyalCustomer.getLyCustomerId());
+                loyalCustomer.getCustomerLink().setActivityUid(datosSesion.getUidActividad());
+                linksService.insert(loyalCustomer.getCustomerLink(), datosSesion);
+            }
+
+            if (loyalCustomer.getAccess() != null) {
+                loyalCustomer.getAccess().setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                accessService.insert(loyalCustomer.getAccess(), datosSesion);
+            }
+
+            if (loyalCustomer.getCollectives() != null) {
+                for (LoyalCustomerCollectiveKey col : loyalCustomer.getCollectives()) {
+                    col.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
+                    collectivesService.insert(col, datosSesion);
+                }
+            }
+
+            if (loyalCustomer.getTags() != null) {
+                for (EtiquetaBean tag : loyalCustomer.getTags()) {
+                    tag.setIdClaseEtiquetaEnlazada(CustomerTagsResource.CLASS_ID);
+                    tag.setIdObjetoEtiquetaEnlazada(loyalCustomer.getLyCustomerId().toString());
+                    customerTagsService.insertTagLink(tag, datosSesion);
+                }
+            }
+
+            LoyalCustomerVersion loyalCustomerVersion = new LoyalCustomerVersion(loyalCustomer.getLyCustomerId());
+            fidVersionControlService.checkLoyalCustomersVersion(datosSesion, loyalCustomerVersion);
+
+            return loyalCustomer;
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ApiException(e.getMessage(), e);
+        }
+    }
 }
