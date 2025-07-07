@@ -46,18 +46,42 @@ public class UnideCustomersResource {
 		}
 	}
 	
-	 @POST
-     @Path("/createCustomer")
-     public com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO associateCustomer(
-                     com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO record) throws ApiException {
-             try {
-                     return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
-             }
-             catch (ApiException e) {
-                     throw e;
-             }
-             catch (Exception e) {
-                     throw new ApiException(e.getMessage(), e);
-             }
-     }
+        @POST
+        @Path("/associateCustomer")
+        public com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO associateCustomer(
+                        com.comerzzia.unide.api.web.model.customer.AssociateCustomerRequest record)
+                        throws ApiException {
+                try {
+                        // Map the custom request to the loyalty DTO used by the service
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO dto =
+                                        mapper.convertValue(record,
+                                                        com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO.class);
+
+                        if (record.getNewCustomerAccess() != null) {
+                                dto.setAccess(mapper.convertValue(record.getNewCustomerAccess(),
+                                                com.comerzzia.api.loyalty.persistence.customers.access.LoyalCustomerAccessDTO.class));
+                        }
+
+                        if (record.getCards() != null) {
+                                java.util.List<com.comerzzia.api.loyalty.persistence.cards.CardDTO> cards =
+                                                new java.util.ArrayList<>();
+                                for (com.comerzzia.unide.api.web.model.customer.AssociateCustomerRequest.Card c : record
+                                                .getCards()) {
+                                        com.comerzzia.api.loyalty.persistence.cards.CardDTO card = new com.comerzzia.api.loyalty.persistence.cards.CardDTO();
+                                        card.setCardNumber(c.getCardNumber());
+                                        cards.add(card);
+                                }
+                                dto.setCards(cards);
+                        }
+
+                        return service.associateCustomer(dto, datosSesionRequest.getDatosSesionBean());
+                }
+                catch (ApiException e) {
+                        throw e;
+                }
+                catch (Exception e) {
+                        throw new ApiException(e.getMessage(), e);
+                }
+        }
 }
