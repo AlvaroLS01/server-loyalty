@@ -3,8 +3,8 @@ package com.comerzzia.unide.api.web.rest.customers;
 import javax.annotation.Resource;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.PUT;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
@@ -30,11 +30,11 @@ public class UnideCustomersResource {
 	protected ComerzziaDatosSesion datosSesionRequest;
 
 	@Autowired
-        protected UnideLyCustomersService service;
+	protected UnideLyCustomersService service;
 
 	@PUT
 	@Path("/{lyCustomerId}/deactivate")
-        public void deleteLoyalCustomer(@Valid DeactivateCustomer record) throws ApiException {
+	public void deleteLoyalCustomer(@Valid DeactivateCustomer record) throws ApiException {
 		try {
 			service.deactivateLoyalCustomer(record, datosSesionRequest.getDatosSesionBean());
 		}
@@ -43,21 +43,21 @@ public class UnideCustomersResource {
 		}
 		catch (Exception e) {
 			throw new ApiException(e.getMessage(), e);
-                }
-        }
-
-        @POST
-        @Path("/createCustomer")
-        public com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO associateCustomer(
-                        com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO record) throws ApiException {
-                try {
-                        return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
-                }
-                catch (ApiException e) {
-                        throw e;
-                }
-                catch (Exception e) {
-                        throw new ApiException(e.getMessage(), e);
-                }
-        }
+		}
+	}
+	
+	 @POST
+     @Path("/createCustomer")
+     public com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO associateCustomer(
+                     com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO record) throws ApiException {
+             try {
+                     return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
+             }
+             catch (ApiException e) {
+                     throw e;
+             }
+             catch (Exception e) {
+                     throw new ApiException(e.getMessage(), e);
+             }
+     }
 }
