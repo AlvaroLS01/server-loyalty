@@ -1,5 +1,7 @@
 package com.comerzzia.unide.api.services.customers;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -12,12 +14,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comerzzia.api.core.service.exception.ApiException;
 import com.comerzzia.api.core.service.exception.BadRequestException;
+import org.springframework.util.CollectionUtils;
+import java.util.Collections;
 import com.comerzzia.api.core.service.exception.NotFoundException;
 import com.comerzzia.api.loyalty.persistence.cards.CardDTO;
 import com.comerzzia.api.loyalty.persistence.cards.CardEntity;
+import com.comerzzia.api.loyalty.persistence.cards.CardUK;
+import com.comerzzia.api.loyalty.persistence.collectives.CollectiveKey;
+import com.comerzzia.api.loyalty.persistence.collectives.CollectiveMapper;
 import com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO;
 import com.comerzzia.api.loyalty.persistence.customers.LyCustomerEntity;
 import com.comerzzia.api.loyalty.persistence.customers.LyCustomerExample;
+import com.comerzzia.api.loyalty.persistence.customers.access.LoyalCustomerAccessDTO;
+import com.comerzzia.api.loyalty.persistence.customers.access.LoyalCustomerAccessEntityDTO;
 import com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactEntity;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactExample;
@@ -44,6 +53,9 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 	
 	@Autowired
 	protected LoyalCustomerContactMapper mapperContact;
+	
+    @Autowired
+    private CollectiveMapper collectiveMapper;
 
 	@Override
 	public LyCustomerDTO insert(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion)
@@ -194,83 +206,154 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 
 		@Override
 		@Transactional(rollbackFor = Exception.class)
-		public LyCustomerDTO associateCustomer(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion) throws ApiException {
+		public LyCustomerDTO associateCustomer(LyCustomerDTO fidelizado, IDatosSesion datosSesion) throws ApiException {
+			if (fidelizado == null || fidelizado.getCards() == null || fidelizado.getCards().isEmpty() || StringUtils.isBlank(fidelizado.getCards().get(0).getCardNumber())) {
+				log.debug("associateCustomer - petición inválida: falta número de tarjeta");
+				throw new BadRequestException("El número de tarjeta es obligatorio");
+			}
+			String numeroTarjeta = fidelizado.getCards().get(0).getCardNumber();
+			log.debug("associateCustomer - iniciando para tarjeta " + numeroTarjeta);
+
+			CardDTO tarjetaDto;
 			try {
-				if (loyalCustomer == null || loyalCustomer.getCards() == null || loyalCustomer.getCards().isEmpty() || StringUtils.isBlank(loyalCustomer.getCards().get(0).getCardNumber())) {
-					throw new BadRequestException("Card number is mandatory");
-				}
-
-				String cardNumber = loyalCustomer.getCards().get(0).getCardNumber();
-				CardDTO cardDto = cardsService.selectByCardNumber(cardNumber, datosSesion);
-				Long targetCustomerId = cardDto.getLyCustomer().getLyCustomerId();
-				LyCustomerDTO anonymous = selectDTOByPrimaryKey(targetCustomerId, datosSesion);
-
-				if (StringUtils.isNotBlank(anonymous.getName()) || StringUtils.isNotBlank(anonymous.getLastName())) {
-					throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "Card already associated to a customer");
-				}
-
-				String regCode = variablesService.consultarValor(datosSesion, COD_COLECTIVO_REGISTRO);
-				if (StringUtils.isNotBlank(regCode)) {
-					LoyalCustomerCollectiveDTO collective = new LoyalCustomerCollectiveDTO();
-					collective.setCollectiveCode(regCode);
-					if (loyalCustomer.getCollectives() == null) {
-						loyalCustomer.setCollectives(new java.util.ArrayList<>());
-					}
-					loyalCustomer.getCollectives().add(collective);
-				}
-
-				if (loyalCustomer.getAccess() != null && StringUtils.isNotBlank(loyalCustomer.getAccess().getUser())) {
-					loyalCustomer.getAccess().setUser(loyalCustomer.getAccess().getUser().replace("_", "").replace("@", ""));
-				}
-
-				loyalCustomer.setLyCustomerId(anonymous.getLyCustomerId());
-				loyalCustomer.setLyCustomerCode(anonymous.getLyCustomerCode());
-
-				super.update(modelMapper.map(loyalCustomer, LyCustomerEntity.class), datosSesion);
-
-				if (loyalCustomer.getContacts() != null) {
-					for (LoyalCustomerContactEntity contact : loyalCustomer.getContacts()) {
-						contact.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
-						contactsService.insert(contact, datosSesion);
-					}
-				}
-
-				if (loyalCustomer.getCustomerLink() != null) {
-					loyalCustomer.getCustomerLink().setLyCustomerId(loyalCustomer.getLyCustomerId());
-					loyalCustomer.getCustomerLink().setActivityUid(datosSesion.getUidActividad());
-					linksService.insert(loyalCustomer.getCustomerLink(), datosSesion);
-				}
-
-				if (loyalCustomer.getAccess() != null) {
-					loyalCustomer.getAccess().setLoyalCustomerId(loyalCustomer.getLyCustomerId());
-					accessService.insert(loyalCustomer.getAccess(), datosSesion);
-				}
-
-				if (loyalCustomer.getCollectives() != null) {
-					for (LoyalCustomerCollectiveDTO col : loyalCustomer.getCollectives()) {
-						col.setLoyalCustomerId(loyalCustomer.getLyCustomerId());
-						collectivesService.insert(col, datosSesion);
-					}
-				}
-
-				if (loyalCustomer.getTags() != null) {
-					for (EtiquetaBean tag : loyalCustomer.getTags()) {
-						tag.setIdClaseEtiquetaEnlazada(CustomerTagsResource.CLASS_ID);
-						tag.setIdObjetoEtiquetaEnlazada(loyalCustomer.getLyCustomerId().toString());
-						customerTagsService.insertTagLink(tag, datosSesion);
-					}
-				}
-
-				LoyalCustomerVersion loyalCustomerVersion = new LoyalCustomerVersion(loyalCustomer.getLyCustomerId());
-				fidVersionControlService.checkLoyalCustomersVersion(datosSesion, loyalCustomerVersion);
-
-				return loyalCustomer;
+				tarjetaDto = cardsService.selectByCardNumber(numeroTarjeta, datosSesion);
 			}
-			catch (ApiException e) {
-				throw e;
+			catch (NotFoundException e) {
+				log.debug("associateCustomer - tarjeta no encontrada: " + numeroTarjeta);
+				throw new NotFoundException();
 			}
-			catch (Exception e) {
-				throw new ApiException(e.getMessage(), e);
+			Long idAnonimo = tarjetaDto.getLyCustomer() != null ? tarjetaDto.getLyCustomer().getLyCustomerId() : null;
+			if (idAnonimo == null) {
+				log.debug("associateCustomer - tarjeta " + numeroTarjeta + " sin cliente asociado");
+				throw new NotFoundException();
 			}
-    }
-}
+			log.debug("associateCustomer - cliente anónimo encontrado: id " + idAnonimo);
+
+			// Verificar que aún no tiene dni o documento
+			LyCustomerDTO clienteAnonimo = selectDTOByPrimaryKey(idAnonimo, datosSesion);
+			if (StringUtils.isNotBlank(clienteAnonimo.getVatNumber())) {
+				log.debug("associateCustomer - cliente " + idAnonimo + " ya tiene documento " + clienteAnonimo.getVatNumber());
+				throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "Esta tarjeta ya tiene un fidelizado con datos asociado");
+			}
+
+			if (StringUtils.isNotBlank(fidelizado.getVatNumber())) {
+				LyCustomerExample ejemploDni = new LyCustomerExample();
+				ejemploDni.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andVatNumberEqualTo(fidelizado.getVatNumber()).andLyCustomerIdNotEqualTo(idAnonimo);
+				List<LyCustomerDTO> clientesConDni = mapper.selectFromViewByExample(ejemploDni);
+				if (!clientesConDni.isEmpty()) {
+					log.debug("associateCustomer - VAT duplicado " + fidelizado.getVatNumber() + " para cliente " + idAnonimo);
+					throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "El documento indicado ya se encuentra registrado en el sistema");
+				}
+			}
+
+			if (!CollectionUtils.isEmpty(fidelizado.getContacts())) {
+				for (LoyalCustomerContactEntity contactoNuevo : fidelizado.getContacts()) {
+					LoyalCustomerContactExample ejemploContacto = new LoyalCustomerContactExample();
+					ejemploContacto.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andContactTypeCodeEqualTo(contactoNuevo.getContactTypeCode()).andValueEqualTo(contactoNuevo.getValue())
+					        .andLoyalCustomerIdNotEqualTo(idAnonimo);
+					List<LoyalCustomerContactEntity> contactosExistentes = mapperContact.selectByExample(ejemploContacto);
+					if (!contactosExistentes.isEmpty()) {
+						String tipo = "EMAIL".equals(contactoNuevo.getContactTypeCode()) ? "E-mail" : contactoNuevo.getContactTypeCode().startsWith("MOVIL") ? "Móvil" : "Teléfono";
+						log.debug("associateCustomer - " + tipo + " duplicado " + contactoNuevo.getValue() + " para cliente " + idAnonimo);
+						throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "El " + tipo + " indicado ya se encuentra registrado en el sistema");
+					}
+				}
+			}
+
+			// Añadir colectivo REG automáticamente
+			try {
+				String codigoColectivo = variablesService.consultarValor(datosSesion, COD_COLECTIVO_REGISTRO);
+				if (StringUtils.isNotBlank(codigoColectivo)) {
+					CollectiveKey claveColectivo = new CollectiveKey();
+					claveColectivo.setUidInstancia(datosSesion.getUidInstancia());
+					claveColectivo.setCodColectivo(codigoColectivo);
+					com.comerzzia.api.loyalty.persistence.collectives.Collective maestro = collectiveMapper.selectByPrimaryKey(claveColectivo);
+					LoyalCustomerCollectiveDTO colectivoRegistro = new LoyalCustomerCollectiveDTO();
+					colectivoRegistro.setCollectiveCode(codigoColectivo);
+					colectivoRegistro.setCollectiveDes(maestro != null ? maestro.getDesColectivo() : null);
+					fidelizado.setCollectives(Collections.singletonList(colectivoRegistro));
+					log.debug("associateCustomer - colectivo REG añadido: " + codigoColectivo);
+				}
+			}
+			catch (VariableException | VariableNotFoundException ignored) {
+				log.debug("associateCustomer - variable COD_COLECTIVO_REGISTRO no encontrada");
+			}
+
+			if (fidelizado.getAccess() != null && StringUtils.isNotBlank(fidelizado.getAccess().getUser())) {
+				String usuarioBruto = fidelizado.getAccess().getUser();
+				String usuarioLimpio = usuarioBruto.replace("_", "").replace("@", "");
+				fidelizado.getAccess().setUser(usuarioLimpio);
+				log.debug("associateCustomer - usuario limpiado de '" + usuarioBruto + "' a '" + usuarioLimpio + "'");
+			}
+
+			fidelizado.setLyCustomerId(clienteAnonimo.getLyCustomerId());
+			fidelizado.setLyCustomerCode(clienteAnonimo.getLyCustomerCode());
+			log.debug("associateCustomer - asignando datos al cliente " + idAnonimo);
+
+			super.update(modelMapper.map(fidelizado, LyCustomerEntity.class), datosSesion);
+			log.debug("associateCustomer - datos principales actualizados para cliente " + idAnonimo);
+
+			CardUK claveTarjeta = new CardUK(datosSesion, numeroTarjeta);
+			CardEntity entidadTarjeta;
+			try {
+				entidadTarjeta = cardsService.selectByUniqueKey(datosSesion, claveTarjeta);
+			}
+			catch (NotFoundException e) {
+				log.debug("associateCustomer - tarjeta " + numeroTarjeta + " no encontrada en clave única");
+				throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "No se encontró la tarjeta para asignar");
+			}
+			entidadTarjeta.setLyCustomerId(idAnonimo);
+			cardsService.updateByPrimaryKey(datosSesion, entidadTarjeta);
+			log.debug("associateCustomer - tarjeta " + numeroTarjeta + " asignada a cliente " + idAnonimo);
+
+			LoyalCustomerContactExample ejemploBorrar = new LoyalCustomerContactExample();
+			ejemploBorrar.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo);
+			mapperContact.deleteByExample(ejemploBorrar);
+			log.debug("associateCustomer - contactos antiguos borrados para cliente " + idAnonimo);
+
+			if (!CollectionUtils.isEmpty(fidelizado.getContacts())) {
+				for (LoyalCustomerContactEntity contactoInsertar : fidelizado.getContacts()) {
+					contactoInsertar.setInstanceUid(datosSesion.getUidInstancia());
+					contactoInsertar.setLoyalCustomerId(idAnonimo);
+					contactsService.insert(contactoInsertar, datosSesion);
+				}
+				log.debug("associateCustomer - " + fidelizado.getContacts().size() + " contactos nuevos insertados para cliente " + idAnonimo);
+			}
+
+			if (fidelizado.getAccess() != null) {
+				LoyalCustomerAccessEntityDTO acceso = fidelizado.getAccess();
+				acceso.setLoyalCustomerId(idAnonimo);
+				try {
+					accessService.selectByLoyalCustomer(datosSesion, idAnonimo);
+					accessService.updateCustomerAccessData(datosSesion, acceso);
+					log.debug("associateCustomer - datos de acceso actualizados para cliente " + idAnonimo);
+				}
+				catch (NotFoundException nf) {
+					accessService.insert(acceso, datosSesion);
+					log.debug("associateCustomer - acceso insertado para cliente " + idAnonimo);
+				}
+			}
+
+			if (!CollectionUtils.isEmpty(fidelizado.getCollectives())) {
+				for (LoyalCustomerCollectiveDTO colec : fidelizado.getCollectives()) {
+					colec.setLoyalCustomerId(idAnonimo);
+					collectivesService.insert(colec, datosSesion);
+				}
+				log.debug("associateCustomer - " + fidelizado.getCollectives().size() + " colectivos insertados para cliente " + idAnonimo);
+			}
+
+			if (!CollectionUtils.isEmpty(fidelizado.getTags())) {
+				for (EtiquetaBean etiqueta : fidelizado.getTags()) {
+					etiqueta.setIdObjetoEtiquetaEnlazada(idAnonimo.toString());
+					etiqueta.setIdClaseEtiquetaEnlazada(CustomerTagsResource.CLASS_ID);
+					customerTagsService.insertTagLink(etiqueta, datosSesion);
+				}
+				log.debug("associateCustomer - " + fidelizado.getTags().size() + " etiquetas insertadas para cliente " + idAnonimo);
+			}
+
+			fidVersionControlService.checkLoyalCustomersVersion(datosSesion, new LoyalCustomerVersion(idAnonimo));
+			log.debug("associateCustomer - finalizado para cliente " + idAnonimo);
+
+			return fidelizado;
+		}
+	}
