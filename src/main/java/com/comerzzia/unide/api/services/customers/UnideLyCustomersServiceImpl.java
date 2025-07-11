@@ -98,10 +98,10 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 					validateContact.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andContactTypeCodeEqualTo("EMAIL").andValueEqualTo(contacto.getValue());
 					List<LoyalCustomerContactEntity> validarEmail = mapperContact.selectByExample(validateContact);
 
-					if (validarEmail != null && !validarEmail.isEmpty()) {
-						msgResponse = "El E-mail indicado ya se encuentra registrado en el sistema";
-						break;
-					}
+                                        if (validarEmail != null && !validarEmail.isEmpty()) {
+                                                msgResponse = "USER/EMAIL Alredy exist";
+                                                break;
+                                        }
 
 				}
 				if ("MOVIL".equals(contacto.getContactTypeCode())) {
@@ -296,6 +296,9 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                                         if (!contactosExistentes.isEmpty()) {
                                                 String tipo = "EMAIL".equals(contactoNuevo.getContactTypeCode()) ? "E-mail" : contactoNuevo.getContactTypeCode().startsWith("MOVIL") ? "Móvil" : "Teléfono";
                                                 log.info("associateCustomer - " + tipo + " duplicado " + contactoNuevo.getValue() + " para cliente " + idAnonimo);
+                                                if ("EMAIL".equals(contactoNuevo.getContactTypeCode())) {
+                                                        throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "USER/EMAIL Alredy exist");
+                                                }
                                                 throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "El " + tipo + " indicado ya se encuentra registrado en el sistema");
                                         }
                                 }
@@ -326,6 +329,16 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                                 String usuarioBruto = fidelizado.getAccess().getUser();
                                 String usuarioLimpio = usuarioBruto.replace("_", "").replace("@", "");
                                 fidelizado.getAccess().setUser(usuarioLimpio);
+
+                                // Mantener la dirección de correo intacta
+                                if (fidelizado.getContacts() != null) {
+                                        for (LoyalCustomerContactEntity c : fidelizado.getContacts()) {
+                                                if ("EMAIL".equals(c.getContactTypeCode()) && usuarioBruto.equals(c.getValue())) {
+                                                        c.setValue(usuarioBruto);
+                                                }
+                                        }
+                                }
+
                                 log.info("associateCustomer - usuario limpiado de '" + usuarioBruto + "' a '" + usuarioLimpio + "'");
                         }
                 }
