@@ -337,13 +337,17 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                        fidelizado.getAccess().setUser(usuarioLimpio);
 
                        // Si el login es un email, aseguramos que el contacto de tipo EMAIL
-                       // mantenga exactamente la cadena introducida por el usuario
-                       if (fidelizado.getContacts() != null && usuarioBruto.contains("@")) {
-                               for (LoyalCustomerContactEntity c : fidelizado.getContacts()) {
-                                       if ("EMAIL".equals(c.getContactTypeCode())) {
-                                               // En algunos casos el email llega ya limpiado, por lo que se restaura
-                                               // el valor original introducido por el cliente
-                                               c.setValue(usuarioBruto);
+                       // y el campo email de acceso mantengan exactamente lo introducido
+                       if (usuarioBruto.contains("@")) {
+                               fidelizado.getAccess().setEmail(usuarioBruto);
+
+                               if (fidelizado.getContacts() != null) {
+                                       for (LoyalCustomerContactEntity c : fidelizado.getContacts()) {
+                                               if ("EMAIL".equals(c.getContactTypeCode())) {
+                                                       // En algunos casos el email llega ya limpiado, por lo que se restaura
+                                                       // el valor original introducido por el cliente
+                                                       c.setValue(usuarioBruto);
+                                               }
                                        }
                                }
                        }
