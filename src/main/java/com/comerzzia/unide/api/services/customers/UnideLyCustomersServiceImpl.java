@@ -328,26 +328,29 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 		}
 	}
 
-	private void normalizarUsuarioAcceso(LyCustomerDTO fidelizado) {
-		if (fidelizado.getAccess() != null && StringUtils.isNotBlank(fidelizado.getAccess().getUser())) {
-			String usuarioBruto = fidelizado.getAccess().getUser();
+       private void normalizarUsuarioAcceso(LyCustomerDTO fidelizado) {
+               if (fidelizado.getAccess() != null && StringUtils.isNotBlank(fidelizado.getAccess().getUser())) {
+                       String usuarioBruto = fidelizado.getAccess().getUser();
 
-			// Limpiar solo el nombre de usuario
-			String usuarioLimpio = usuarioBruto.replace("_", "").replace("@", "");
-			fidelizado.getAccess().setUser(usuarioLimpio);
+                       // Limpiar solo el nombre de usuario
+                       String usuarioLimpio = usuarioBruto.replace("_", "").replace("@", "");
+                       fidelizado.getAccess().setUser(usuarioLimpio);
 
-			// Mantener la dirección de correo intacta si coincide con el usuario original
-			if (fidelizado.getContacts() != null) {
-				for (LoyalCustomerContactEntity c : fidelizado.getContacts()) {
-					if ("EMAIL".equals(c.getContactTypeCode()) && usuarioBruto.equals(c.getValue())) {
-						c.setValue(usuarioBruto);
-					}
-				}
-			}
+                       // Si el login es un email, aseguramos que el contacto de tipo EMAIL
+                       // mantenga exactamente la cadena introducida por el usuario
+                       if (fidelizado.getContacts() != null && usuarioBruto.contains("@")) {
+                               for (LoyalCustomerContactEntity c : fidelizado.getContacts()) {
+                                       if ("EMAIL".equals(c.getContactTypeCode())) {
+                                               // En algunos casos el email llega ya limpiado, por lo que se restaura
+                                               // el valor original introducido por el cliente
+                                               c.setValue(usuarioBruto);
+                                       }
+                               }
+                       }
 
-			log.info("associateCustomer - usuario limpiado de '" + usuarioBruto + "' a '" + usuarioLimpio + "'");
-		}
-	}
+                       log.info("associateCustomer - usuario limpiado de '" + usuarioBruto + "' a '" + usuarioLimpio + "'");
+               }
+       }
 
 	private void actualizarDatosPrincipales(LyCustomerDTO fidelizado, LyCustomerDTO clienteAnonimo, IDatosSesion datosSesion) throws ApiException {
 		fidelizado.setLyCustomerId(clienteAnonimo.getLyCustomerId());
