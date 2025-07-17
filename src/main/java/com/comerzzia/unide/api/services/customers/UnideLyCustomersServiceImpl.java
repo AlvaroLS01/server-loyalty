@@ -327,10 +327,12 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                 private void normalizarUsuarioAcceso(LyCustomerDTO fidelizado) {
                         if (fidelizado.getAccess() != null && StringUtils.isNotBlank(fidelizado.getAccess().getUser())) {
                                 String usuarioBruto = fidelizado.getAccess().getUser();
+
+                                // Limpiar solo el nombre de usuario
                                 String usuarioLimpio = usuarioBruto.replace("_", "").replace("@", "");
                                 fidelizado.getAccess().setUser(usuarioLimpio);
 
-                                // Mantener la dirección de correo intacta
+                                // Mantener la dirección de correo intacta si coincide con el usuario original
                                 if (fidelizado.getContacts() != null) {
                                         for (LoyalCustomerContactEntity c : fidelizado.getContacts()) {
                                                 if ("EMAIL".equals(c.getContactTypeCode()) && usuarioBruto.equals(c.getValue())) {
