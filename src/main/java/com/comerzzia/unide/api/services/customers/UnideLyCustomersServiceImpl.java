@@ -389,10 +389,20 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 				accessService.updateCustomerAccessData(datosSesion, acceso);
 				log.info("associateCustomer - datos de acceso actualizados para cliente " + idAnonimo);
 			}
-			catch (NotFoundException nf) {
-				accessService.insert(acceso, datosSesion);
-				log.info("associateCustomer - acceso insertado para cliente " + idAnonimo);
-			}
+                        catch (NotFoundException nf) {
+                                try {
+                                        accessService.insert(acceso, datosSesion);
+                                        log.info("associateCustomer - acceso insertado para cliente " + idAnonimo);
+                                }
+                                catch (ApiException ae) {
+                                        if (ae.getMessage() != null && ae.getMessage().toUpperCase().contains("USER/EMAIL")
+                                                        && ae.getMessage().toLowerCase().contains("already exist")) {
+                                                throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE,
+                                                                "El email registrado ya existe");
+                                        }
+                                        throw ae;
+                                }
+                        }
 		}
 
 		if (!CollectionUtils.isEmpty(fidelizado.getCollectives())) {
