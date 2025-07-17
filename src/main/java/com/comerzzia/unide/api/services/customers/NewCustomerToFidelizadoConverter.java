@@ -19,36 +19,36 @@ import com.comerzzia.api.loyalty.web.model.customertag.FidelizadoEtiquetaBeanCon
 @Component
 public class NewCustomerToFidelizadoConverter {
 
-    @Autowired
-    private ModelMapper modelMapper;
+	@Autowired
+	private ModelMapper modelMapper;
 
-    @Autowired
-    private FidelizadoEtiquetaBeanConverter fidelizadoEtiquetaBeanConverter;
+	@Autowired
+	private FidelizadoEtiquetaBeanConverter fidelizadoEtiquetaBeanConverter;
 
-    public LyCustomerDTO convert(NewCustomer newCustomer) {
-        LyCustomerDTO fidelizado = modelMapper.map(newCustomer, LyCustomerDTO.class);
+	public LyCustomerDTO convert(NewCustomer newCustomer) {
+		LyCustomerDTO fidelizado = modelMapper.map(newCustomer, LyCustomerDTO.class);
 
-        if (StringUtils.isNotBlank(fidelizado.getCountryCode())) {
-            fidelizado.setCountryCode(fidelizado.getCountryCode().toUpperCase());
-        }
+		if (StringUtils.isNotBlank(fidelizado.getCountryCode())) {
+			fidelizado.setCountryCode(fidelizado.getCountryCode().toUpperCase());
+		}
 
-        if (newCustomer.getContacts() != null) {
-            fidelizado.setContacts(modelMapper.map(newCustomer.getContacts(), new TypeToken<List<LoyalCustomerContactEntity>>() {
-            }.getType()));
-        }
-        if (newCustomer.getCollectives() != null) {
-            fidelizado.setCollectives(modelMapper.map(newCustomer.getCollectives(), new TypeToken<List<LoyalCustomerCollectiveDTO>>() {
-            }.getType()));
-        }
-        if (newCustomer.getTags() != null) {
-            fidelizado.setTags(fidelizadoEtiquetaBeanConverter.toEtiquetaBeanList(newCustomer.getTags()));
-        }
-        if (newCustomer.getCustomerLink() != null) {
-            fidelizado.setCustomerLink(modelMapper.map(newCustomer.getCustomerLink(), LoyalCustomerLinkEntity.class));
-        }
-        if (newCustomer.getNewCustomerAccess() != null) {
-            fidelizado.setAccess(modelMapper.map(newCustomer.getNewCustomerAccess(), LoyalCustomerAccessEntityDTO.class));
-        }
-        return fidelizado;
-    }
+		if (newCustomer.getContacts() != null) {
+			fidelizado.setContacts(modelMapper.map(newCustomer.getContacts(), new TypeToken<List<LoyalCustomerContactEntity>>(){
+			}.getType()));
+		}
+		if (newCustomer.getCollectives() != null) {
+			fidelizado.setCollectives(modelMapper.map(newCustomer.getCollectives(), new TypeToken<List<LoyalCustomerCollectiveDTO>>(){
+			}.getType()));
+		}
+		if (newCustomer.getTags() != null) {
+			fidelizado.setTags(fidelizadoEtiquetaBeanConverter.toEtiquetaBeanList(newCustomer.getTags()));
+		}
+		if (newCustomer.getCustomerLink() != null) {
+			fidelizado.setCustomerLink(modelMapper.map(newCustomer.getCustomerLink(), LoyalCustomerLinkEntity.class));
+		}
+		if (newCustomer.getNewCustomerAccess() != null) {
+			fidelizado.setAccess(modelMapper.map(newCustomer.getNewCustomerAccess(), LoyalCustomerAccessEntityDTO.class));
+		}
+		return fidelizado;
+	}
 }

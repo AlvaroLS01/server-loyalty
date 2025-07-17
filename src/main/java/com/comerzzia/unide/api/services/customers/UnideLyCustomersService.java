@@ -11,7 +11,7 @@ public interface UnideLyCustomersService extends LyCustomersService {
 
 	void deactivateLoyalCustomer(DeactivateCustomer deactivateModel, IDatosSesion datosSesion) throws ApiException;
 
-        LyCustomerDTO associateCustomer(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion) throws ApiException;
+	LyCustomerDTO associateCustomer(LyCustomerDTO loyalCustomer, IDatosSesion datosSesion) throws ApiException;
 
-        LyCustomerDTO associateCustomer(AssociateCustomerRequest record, IDatosSesion datosSesion) throws ApiException;
+	LyCustomerDTO associateCustomer(AssociateCustomerRequest record, IDatosSesion datosSesion) throws ApiException;
 }

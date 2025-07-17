@@ -1,6 +1,5 @@
 package com.comerzzia.unide.api.web.rest.customers;
 
-
 import javax.annotation.Resource;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -31,7 +30,6 @@ public class UnideCustomersResource {
 	@Resource(name = "datosSesionRequest")
 	protected ComerzziaDatosSesion datosSesionRequest;
 
-	
 	@Autowired
 	protected UnideLyCustomersService service;
 
@@ -48,18 +46,18 @@ public class UnideCustomersResource {
 			throw new ApiException(e.getMessage(), e);
 		}
 	}
-	
-        @PUT
-        @Path("/associateCustomer")
-        public LyCustomerDTO associateCustomer(@Valid AssociateCustomerRequest record) throws ApiException {
-                try {
-                        return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
-                }
-                catch (ApiException e) {
-                        throw e;
-                }
-                catch (Exception e) {
-                        throw new ApiException(e.getMessage(), e);
-                }
-        }
+
+	@PUT
+	@Path("/associateCustomer")
+	public LyCustomerDTO associateCustomer(@Valid AssociateCustomerRequest record) throws ApiException {
+		try {
+			return service.associateCustomer(record, datosSesionRequest.getDatosSesionBean());
+		}
+		catch (ApiException e) {
+			throw e;
+		}
+		catch (Exception e) {
+			throw new ApiException(e.getMessage(), e);
+		}
+	}
 }
