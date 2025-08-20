@@ -11,21 +11,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import com.comerzzia.api.core.service.exception.ApiException;
 import com.comerzzia.api.core.service.exception.BadRequestException;
-import org.springframework.util.CollectionUtils;
-import java.util.Collections;
 import com.comerzzia.api.core.service.exception.NotFoundException;
 import com.comerzzia.api.loyalty.persistence.cards.CardDTO;
 import com.comerzzia.api.loyalty.persistence.cards.CardEntity;
-import com.comerzzia.api.loyalty.persistence.cards.CardUK;
 import com.comerzzia.api.loyalty.persistence.collectives.CollectiveKey;
 import com.comerzzia.api.loyalty.persistence.collectives.CollectiveMapper;
 import com.comerzzia.api.loyalty.persistence.customers.LyCustomerDTO;
 import com.comerzzia.api.loyalty.persistence.customers.LyCustomerEntity;
 import com.comerzzia.api.loyalty.persistence.customers.LyCustomerExample;
-import com.comerzzia.api.loyalty.persistence.customers.access.LoyalCustomerAccessDTO;
 import com.comerzzia.api.loyalty.persistence.customers.access.LoyalCustomerAccessEntityDTO;
 import com.comerzzia.api.loyalty.persistence.customers.collectives.LoyalCustomerCollectiveDTO;
 import com.comerzzia.api.loyalty.persistence.customers.contacttypes.LoyalCustomerContactEntity;
@@ -42,8 +39,8 @@ import com.comerzzia.core.servicios.variables.VariableException;
 import com.comerzzia.core.servicios.variables.VariableNotFoundException;
 import com.comerzzia.core.util.criptografia.CriptoException;
 import com.comerzzia.core.util.mybatis.exception.PersistenceExceptionFactory;
-import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
 import com.comerzzia.unide.api.web.model.customer.AssociateCustomerRequest;
+import com.comerzzia.unide.api.web.model.customer.DeactivateCustomer;
 
 @Service
 @Primary
@@ -359,6 +356,7 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 	private void actualizarDatosPrincipales(LyCustomerDTO fidelizado, LyCustomerDTO clienteAnonimo, IDatosSesion datosSesion) throws ApiException {
 		fidelizado.setLyCustomerId(clienteAnonimo.getLyCustomerId());
 		fidelizado.setLyCustomerCode(clienteAnonimo.getLyCustomerCode());
+		fidelizado.setCreationDate(clienteAnonimo.getCreationDate());
 		log.info("associateCustomer - asignando datos al cliente " + clienteAnonimo.getLyCustomerId());
 		super.update(modelMapper.map(fidelizado, LyCustomerEntity.class), datosSesion);
 		log.info("associateCustomer - datos principales actualizados para cliente " + clienteAnonimo.getLyCustomerId());
