@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.ibatis.exceptions.PersistenceException;
@@ -278,9 +281,9 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 
 	private void validarDuplicados(LyCustomerDTO fidelizado, IDatosSesion datosSesion, Long idAnonimo) throws ApiException {
 		if (StringUtils.isNotBlank(fidelizado.getVatNumber())) {
-			LyCustomerExample ejemploDni = new LyCustomerExample();
-			ejemploDni.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andVatNumberEqualTo(fidelizado.getVatNumber()).andLyCustomerIdNotEqualTo(idAnonimo);
-			List<LyCustomerDTO> clientesConDni = mapper.selectFromViewByExample(ejemploDni);
+               LyCustomerExample busquedaDocumentoDuplicado = new LyCustomerExample();
+               busquedaDocumentoDuplicado.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andVatNumberEqualTo(fidelizado.getVatNumber()).andLyCustomerIdNotEqualTo(idAnonimo);
+               List<LyCustomerDTO> clientesConDni = mapper.selectFromViewByExample(busquedaDocumentoDuplicado);
 			if (!clientesConDni.isEmpty()) {
 				log.info("associateCustomer - VAT duplicado " + fidelizado.getVatNumber() + " para cliente " + idAnonimo);
 				throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "El documento indicado ya se encuentra registrado en el sistema");
@@ -288,11 +291,11 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 		}
 
 		if (!CollectionUtils.isEmpty(fidelizado.getContacts())) {
-			for (LoyalCustomerContactEntity contactoNuevo : fidelizado.getContacts()) {
-				LoyalCustomerContactExample ejemploContacto = new LoyalCustomerContactExample();
-				ejemploContacto.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andContactTypeCodeEqualTo(contactoNuevo.getContactTypeCode()).andValueEqualTo(contactoNuevo.getValue())
-				        .andLoyalCustomerIdNotEqualTo(idAnonimo);
-				List<LoyalCustomerContactEntity> contactosExistentes = mapperContact.selectByExample(ejemploContacto);
+               for (LoyalCustomerContactEntity contactoNuevo : fidelizado.getContacts()) {
+                               LoyalCustomerContactExample busquedaContactoDuplicado = new LoyalCustomerContactExample();
+                               busquedaContactoDuplicado.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andContactTypeCodeEqualTo(contactoNuevo.getContactTypeCode()).andValueEqualTo(contactoNuevo.getValue())
+                                               .andLoyalCustomerIdNotEqualTo(idAnonimo);
+                               List<LoyalCustomerContactEntity> contactosExistentes = mapperContact.selectByExample(busquedaContactoDuplicado);
 				if (!contactosExistentes.isEmpty()) {
 					String tipo = "EMAIL".equals(contactoNuevo.getContactTypeCode()) ? "E-mail" : contactoNuevo.getContactTypeCode().startsWith("MOVIL") ? "Móvil" : "Teléfono";
 					log.info("associateCustomer - " + tipo + " duplicado " + contactoNuevo.getValue() + " para cliente " + idAnonimo);
@@ -362,21 +365,40 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 		log.info("associateCustomer - datos principales actualizados para cliente " + clienteAnonimo.getLyCustomerId());
 	}
 
-	private void reemplazarContactos(LyCustomerDTO fidelizado, Long idAnonimo, IDatosSesion datosSesion) throws ApiException {
-		LoyalCustomerContactExample ejemploBorrar = new LoyalCustomerContactExample();
-		ejemploBorrar.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo);
-		mapperContact.deleteByExample(ejemploBorrar);
-		log.info("associateCustomer - contactos antiguos borrados para cliente " + idAnonimo);
+       private void reemplazarContactos(LyCustomerDTO fidelizado, Long idAnonimo, IDatosSesion datosSesion) throws ApiException {
+               LoyalCustomerContactExample busquedaContactosCliente = new LoyalCustomerContactExample();
+               busquedaContactosCliente.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo);
+               List<LoyalCustomerContactEntity> contactosCliente = mapperContact.selectByExample(busquedaContactosCliente);
 
-		if (!CollectionUtils.isEmpty(fidelizado.getContacts())) {
-			for (LoyalCustomerContactEntity contactoInsertar : fidelizado.getContacts()) {
-				contactoInsertar.setInstanceUid(datosSesion.getUidInstancia());
-				contactoInsertar.setLoyalCustomerId(idAnonimo);
-				contactsService.insert(contactoInsertar, datosSesion);
-			}
-			log.info("associateCustomer - " + fidelizado.getContacts().size() + " contactos nuevos insertados para cliente " + idAnonimo);
-		}
-	}
+               Map<String, LoyalCustomerContactEntity> contactosClienteMap = contactosCliente.stream().collect(
+                               Collectors.toMap(c -> c.getContactTypeCode() + "|" + c.getValue(), Function.identity(), (existing, replacement) -> replacement));
+
+               int insertados = 0;
+               if (!CollectionUtils.isEmpty(fidelizado.getContacts())) {
+                       for (LoyalCustomerContactEntity contactoInsertar : fidelizado.getContacts()) {
+                               contactoInsertar.setInstanceUid(datosSesion.getUidInstancia());
+                               contactoInsertar.setLoyalCustomerId(idAnonimo);
+                               String key = contactoInsertar.getContactTypeCode() + "|" + contactoInsertar.getValue();
+                               if (contactosClienteMap.containsKey(key)) {
+                                       contactosClienteMap.remove(key);
+                               } else {
+                                       mapperContact.insert(contactoInsertar);
+                                       insertados++;
+                               }
+                       }
+                       log.info("associateCustomer - " + insertados + " contactos nuevos insertados para cliente " + idAnonimo);
+               }
+
+               if (!contactosClienteMap.isEmpty()) {
+                       for (LoyalCustomerContactEntity contactToDelete : contactosClienteMap.values()) {
+                               LoyalCustomerContactExample filtroEliminarContacto = new LoyalCustomerContactExample();
+                               filtroEliminarContacto.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo)
+                                               .andContactTypeCodeEqualTo(contactToDelete.getContactTypeCode()).andValueEqualTo(contactToDelete.getValue());
+                               mapperContact.deleteByExample(filtroEliminarContacto);
+                       }
+                       log.info("associateCustomer - contactos antiguos borrados para cliente " + idAnonimo);
+               }
+       }
 
 	private void actualizarInfoComplementaria(LyCustomerDTO fidelizado, Long idAnonimo, IDatosSesion datosSesion) throws ApiException {
 		if (fidelizado.getAccess() != null) {
