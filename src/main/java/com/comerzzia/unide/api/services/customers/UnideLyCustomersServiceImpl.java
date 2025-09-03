@@ -281,9 +281,9 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 
 	private void validarDuplicados(LyCustomerDTO fidelizado, IDatosSesion datosSesion, Long idAnonimo) throws ApiException {
 		if (StringUtils.isNotBlank(fidelizado.getVatNumber())) {
-                       LyCustomerExample vatNumberCriteria = new LyCustomerExample();
-                       vatNumberCriteria.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andVatNumberEqualTo(fidelizado.getVatNumber()).andLyCustomerIdNotEqualTo(idAnonimo);
-                       List<LyCustomerDTO> clientesConDni = mapper.selectFromViewByExample(vatNumberCriteria);
+               LyCustomerExample busquedaDocumentoDuplicado = new LyCustomerExample();
+               busquedaDocumentoDuplicado.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andVatNumberEqualTo(fidelizado.getVatNumber()).andLyCustomerIdNotEqualTo(idAnonimo);
+               List<LyCustomerDTO> clientesConDni = mapper.selectFromViewByExample(busquedaDocumentoDuplicado);
 			if (!clientesConDni.isEmpty()) {
 				log.info("associateCustomer - VAT duplicado " + fidelizado.getVatNumber() + " para cliente " + idAnonimo);
 				throw new ApiException(ApiException.STATUS_RESPONSE_ERROR_CONFLICT_STATE, "El documento indicado ya se encuentra registrado en el sistema");
@@ -291,11 +291,11 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 		}
 
 		if (!CollectionUtils.isEmpty(fidelizado.getContacts())) {
-                       for (LoyalCustomerContactEntity contactoNuevo : fidelizado.getContacts()) {
-                               LoyalCustomerContactExample contactCriteria = new LoyalCustomerContactExample();
-                               contactCriteria.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andContactTypeCodeEqualTo(contactoNuevo.getContactTypeCode()).andValueEqualTo(contactoNuevo.getValue())
+               for (LoyalCustomerContactEntity contactoNuevo : fidelizado.getContacts()) {
+                               LoyalCustomerContactExample busquedaContactoDuplicado = new LoyalCustomerContactExample();
+                               busquedaContactoDuplicado.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andContactTypeCodeEqualTo(contactoNuevo.getContactTypeCode()).andValueEqualTo(contactoNuevo.getValue())
                                                .andLoyalCustomerIdNotEqualTo(idAnonimo);
-                               List<LoyalCustomerContactEntity> contactosExistentes = mapperContact.selectByExample(contactCriteria);
+                               List<LoyalCustomerContactEntity> contactosExistentes = mapperContact.selectByExample(busquedaContactoDuplicado);
 				if (!contactosExistentes.isEmpty()) {
 					String tipo = "EMAIL".equals(contactoNuevo.getContactTypeCode()) ? "E-mail" : contactoNuevo.getContactTypeCode().startsWith("MOVIL") ? "Móvil" : "Teléfono";
 					log.info("associateCustomer - " + tipo + " duplicado " + contactoNuevo.getValue() + " para cliente " + idAnonimo);
@@ -366,11 +366,11 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
 	}
 
        private void reemplazarContactos(LyCustomerDTO fidelizado, Long idAnonimo, IDatosSesion datosSesion) throws ApiException {
-               LoyalCustomerContactExample existingContactsCriteria = new LoyalCustomerContactExample();
-               existingContactsCriteria.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo);
-               List<LoyalCustomerContactEntity> existingContacts = mapperContact.selectByExample(existingContactsCriteria);
+               LoyalCustomerContactExample busquedaContactosCliente = new LoyalCustomerContactExample();
+               busquedaContactosCliente.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo);
+               List<LoyalCustomerContactEntity> contactosCliente = mapperContact.selectByExample(busquedaContactosCliente);
 
-               Map<String, LoyalCustomerContactEntity> existingContactsMap = existingContacts.stream().collect(
+               Map<String, LoyalCustomerContactEntity> contactosClienteMap = contactosCliente.stream().collect(
                                Collectors.toMap(c -> c.getContactTypeCode() + "|" + c.getValue(), Function.identity(), (existing, replacement) -> replacement));
 
                int insertados = 0;
@@ -379,8 +379,8 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                                contactoInsertar.setInstanceUid(datosSesion.getUidInstancia());
                                contactoInsertar.setLoyalCustomerId(idAnonimo);
                                String key = contactoInsertar.getContactTypeCode() + "|" + contactoInsertar.getValue();
-                               if (existingContactsMap.containsKey(key)) {
-                                       existingContactsMap.remove(key);
+                               if (contactosClienteMap.containsKey(key)) {
+                                       contactosClienteMap.remove(key);
                                } else {
                                        mapperContact.insert(contactoInsertar);
                                        insertados++;
@@ -389,12 +389,12 @@ public class UnideLyCustomersServiceImpl extends LyCustomersServiceImpl implemen
                        log.info("associateCustomer - " + insertados + " contactos nuevos insertados para cliente " + idAnonimo);
                }
 
-               if (!existingContactsMap.isEmpty()) {
-                       for (LoyalCustomerContactEntity contactToDelete : existingContactsMap.values()) {
-                               LoyalCustomerContactExample deleteCriteria = new LoyalCustomerContactExample();
-                               deleteCriteria.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo)
+               if (!contactosClienteMap.isEmpty()) {
+                       for (LoyalCustomerContactEntity contactToDelete : contactosClienteMap.values()) {
+                               LoyalCustomerContactExample filtroEliminarContacto = new LoyalCustomerContactExample();
+                               filtroEliminarContacto.or().andInstanceUidEqualTo(datosSesion.getUidInstancia()).andLoyalCustomerIdEqualTo(idAnonimo)
                                                .andContactTypeCodeEqualTo(contactToDelete.getContactTypeCode()).andValueEqualTo(contactToDelete.getValue());
-                               mapperContact.deleteByExample(deleteCriteria);
+                               mapperContact.deleteByExample(filtroEliminarContacto);
                        }
                        log.info("associateCustomer - contactos antiguos borrados para cliente " + idAnonimo);
                }
