@@ -1,26 +1,18 @@
 server:
-    port: 8080 
+    port: 8080    
     servlet:
-        contextPath: /api/v2/loyalty
+        contextPath: /api/v2/omnichannel
 
 spring:  
     main:
         allow-bean-definition-overriding: true
     application:
-        name: "comerzzia api v2 unide loyalty"
+        name: "comerzzia api v2 custom"
     messages:
-        basename: i18n/messages,i18n/loyalty-messages,i18n/custom-messages
+        basename: i18n/messages,i18n/custom-messages
     jackson:
        serialization:
           FAIL_ON_EMPTY_BEANS: false
-    quartz:
-       job-store-type: JDBC
-       scheduler-name: loyalty       
-       properties:           
-          org.quartz.threadPool.threadCount: 5
-          org.quartz.jobStore.misfireThreshold: 60000
-          org.quartz.jobStore.isClustered: true 
-          org.quartz.scheduler.instanceId: AUTO   
         
 management:
   server:
@@ -35,6 +27,7 @@ logging:
     level:
         ROOT: INFO        
         com.comerzzia.api: DEBUG
+        com.comerzzia.bricodepot: DEBUG
         com.comerzzia.custom.api: DEBUG
-        org.mybatis: INFO   
-        org.springframework : INFO     
+        org.mybatis: INFO
+        org.springframework : INFO
