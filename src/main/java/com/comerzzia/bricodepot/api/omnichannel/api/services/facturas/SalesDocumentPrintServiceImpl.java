@@ -281,7 +281,7 @@ public class SalesDocumentPrintServiceImpl implements SalesDocumentPrintService 
             return node != null ? node.getTextContent() : null;
         }
         return null;
-        }
+    }
 
     protected String getNumPedido(Document document) {
         try {
