@@ -172,24 +172,43 @@ public abstract class AbstractDocumentPrintService {
 
 	abstract protected String getTemplateExtension();
 
-	protected File getTemplateLocaleFile(String template, String localeId) {
-		String partialFileName = AppInfo.getInformesInfo().getRutaBase() + TEMPLATES_PATH + template;
+        protected File getTemplateLocaleFile(String template, String localeId) {
+                String basePath = AppInfo.getInformesInfo().getRutaBase();
+                if (StringUtils.isBlank(basePath)) {
+                        basePath = "";
+                }
+                if (!basePath.endsWith(File.separator)) {
+                        basePath = basePath + File.separator;
+                }
 
-		// by localeId
-		File result = new File(partialFileName + "_" + localeId.toLowerCase() + getTemplateExtension());
+                File result = buildTemplateCandidate(basePath + TEMPLATES_PATH + template, localeId);
 
-		// by country
-		if (!result.exists()) {
-			result = new File(partialFileName + "_" + StringUtils.left(localeId.toLowerCase(), 2) + getTemplateExtension());
-		}
+                if (!result.exists()) {
+                        String normalizedTemplate = template.replace('.', File.separatorChar);
+                        result = buildTemplateCandidate(basePath + normalizedTemplate, localeId);
+                }
 
-		// by name
-		if (!result.exists()) {
-			result = new File(partialFileName + getTemplateExtension());
-		}
+                return result;
+        }
 
-		return result;
-	}
+        private File buildTemplateCandidate(String partialFileName, String localeId) {
+                String locale = localeId != null ? localeId.toLowerCase() : null;
+                String extension = getTemplateExtension();
+                File result = null;
+
+                if (StringUtils.isNotBlank(locale)) {
+                        result = new File(partialFileName + "_" + locale + extension);
+                        if (!result.exists() && locale.length() >= 2) {
+                                result = new File(partialFileName + "_" + StringUtils.left(locale, 2) + extension);
+                        }
+                }
+
+                if (result == null || !result.exists()) {
+                        result = new File(partialFileName + extension);
+                }
+
+                return result;
+        }
 
 	protected File getTemplate(PrintDocumentDTO printRequest, Map<String, Object> docParameters) throws ApiException {
 		String templateExtension = getTemplateExtension();
