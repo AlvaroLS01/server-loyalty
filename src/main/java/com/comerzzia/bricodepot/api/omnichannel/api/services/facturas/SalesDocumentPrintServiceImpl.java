@@ -177,9 +177,6 @@ public class SalesDocumentPrintServiceImpl implements SalesDocumentPrintService 
         }
 
         Locale locale = metadata.getLocale() != null ? metadata.getLocale() : datosSesion.getLocale();
-        if (locale == null) {
-            locale = Locale.getDefault();
-        }
         printDocumentDTO.setMimeType("application/pdf");
         printDocumentDTO.setPrintTemplate(resolvedTemplate);
         printDocumentDTO.setOutputDocumentName(resolveDocumentName(request, documentUid));
@@ -195,7 +192,6 @@ public class SalesDocumentPrintServiceImpl implements SalesDocumentPrintService 
         }
         printDocumentDTO.getCustomParams().put(DocumentPrintService.PARAM_COMPANY_CODE, companyCode);
         printDocumentDTO.getCustomParams().put(DocumentPrintService.PARAM_LOCALE, locale);
-        printDocumentDTO.getCustomParams().put(DocumentPrintService.PARAM_LOCALE_ID, locale.getLanguage());
         printDocumentDTO.getCustomParams().put(DocumentPrintService.PARAM_DEFAULT_TEMPLATE, TEMPLATE_NAME);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
