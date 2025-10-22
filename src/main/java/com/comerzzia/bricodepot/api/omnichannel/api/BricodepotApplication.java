@@ -11,6 +11,8 @@ import org.springframework.context.annotation.ImportResource;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import com.comerzzia.bricodepot.api.omnichannel.api.config.ComerzziaHomeInitializer;
+
 // Esta configuracion elimina el control de errores por defecto de spring mvc
 // que provocaba que por ejemplo un 401 (Unauthorized) se devolvia como un 404. 
 // Esto se debe a que una aplicacion web tendria que redirigir a la pagina que 
@@ -24,9 +26,10 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 public class BricodepotApplication extends SpringBootServletInitializer {
 
-        public static void main(String[] args) {
-                SpringApplication.run(BricodepotApplication.class, args);
-        }
+	public static void main(String[] args) {
+		ComerzziaHomeInitializer.initialize();
+		SpringApplication.run(BricodepotApplication.class, args);
+	}
 
         @Override
         protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
