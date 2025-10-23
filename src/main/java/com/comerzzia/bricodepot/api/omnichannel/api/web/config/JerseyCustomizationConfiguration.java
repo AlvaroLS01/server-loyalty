@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.jersey.ResourceConfigCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.comerzzia.api.omnichannel.web.rest.salesdoc.SalesDocumentResource;
 import com.comerzzia.bricodepot.api.omnichannel.api.web.rest.salesdoc.BricodepotSalesDocumentResource;
 import com.comerzzia.bricodepot.api.omnichannel.api.web.salesdocument.DocumentoVentaImpresionFilter;
 import com.comerzzia.bricodepot.api.omnichannel.api.web.salesdocument.DocumentoVentaImpresionServicio;
@@ -26,6 +27,10 @@ public class JerseyCustomizationConfiguration {
     @Bean
     public ResourceConfigCustomizer bricodepotSalesDocumentResourceCustomizer(
             BricodepotSalesDocumentResource bricodepotSalesDocumentResource) {
-        return resourceConfig -> resourceConfig.register(bricodepotSalesDocumentResource);
+        return resourceConfig -> {
+            resourceConfig.getClasses().removeIf(SalesDocumentResource.class::equals);
+            resourceConfig.getSingletons().removeIf(instance -> SalesDocumentResource.class.equals(instance.getClass()));
+            resourceConfig.register(bricodepotSalesDocumentResource);
+        };
     }
 }
