@@ -6,9 +6,7 @@
 	<queryString>
 		<![CDATA[]]>
 	</queryString>
-	<field name="medioPago" class="java.lang.String">
-		<fieldDescription><![CDATA[medioPago.desMedioPago]]></fieldDescription>
-	</field>
+    <field name="desMedioPago" class="java.lang.String"/>
 	<field name="importe" class="java.math.BigDecimal">
 		<fieldDescription><![CDATA[importe]]></fieldDescription>
 	</field>
@@ -28,7 +26,7 @@
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{medioPago}]]></textFieldExpression>
+                            <textFieldExpression><![CDATA[$F{desMedioPago}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
 				<reportElement uuid="2c360d45-d71e-4067-9476-354c45653086" x="154" y="0" width="70" height="11"/>

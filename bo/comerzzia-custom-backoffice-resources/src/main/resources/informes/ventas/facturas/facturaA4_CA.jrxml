@@ -530,7 +530,7 @@
 				<textElement>
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[new java.text.SimpleDateFormat("dd/MM/yyyy").format(new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(($P{ticket}.getCabecera().getFecha())))]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.ReportExpressions.formatDate($P{ticket}.getCabecera().getFecha())]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement uuid="f2a7c3a5-19f5-4847-882b-93af96b90f1b" x="121" y="173" width="192" height="11">
