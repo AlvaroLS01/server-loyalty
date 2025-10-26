@@ -652,12 +652,13 @@ $P{ticket}.getCabecera().getDatosDocOrigen().getCodTicket() :
 			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
                                 <reportElement uuid="85581467-17fc-4949-bb28-a16f878f4346" x="181" y="12" width="233" height="14">
                                         <printWhenExpression><![CDATA[$P{ticket}.getCabecera().getFiscalData() != null &&
-$P{ticket}.getCabecera().getFiscalData().getPropertyValue("ATCUD") != null]]></printWhenExpression>
+$P{ticket}.getCabecera().getFiscalData().getProperty("ATCUD") != null &&
+$P{ticket}.getCabecera().getFiscalData().getProperty("ATCUD").getValue() != null]]></printWhenExpression>
                                 </reportElement>
                                 <textElement textAlignment="Left">
                                         <font fontName="Tahoma" size="9" isBold="true"/>
                                 </textElement>
-                                <textFieldExpression><![CDATA["ATCUD: " + $P{ticket}.getCabecera().getFiscalData().getPropertyValue("ATCUD")]]></textFieldExpression>
+                                <textFieldExpression><![CDATA["ATCUD: " + $P{ticket}.getCabecera().getFiscalData().getProperty("ATCUD").getValue()]]></textFieldExpression>
                         </textField>
 		</band>
 	</lastPageFooter>
