@@ -96,15 +96,18 @@ public class CabeceraTicket extends CabeceraTicketAbstract<SubtotalIvaTicket, IT
 		}
 	}
 		
-	@Override
-	public FiscalData getFiscalData() {
-		return fiscalData;
-	}
+@Override
+public FiscalData getFiscalData() {
+if (fiscalData == null) {
+fiscalData = new FiscalData();
+}
+return fiscalData;
+}
 
-	@Override
-	public void setFiscalData(FiscalData fiscalData) {
-		this.fiscalData = fiscalData;
-	}
+@Override
+public void setFiscalData(FiscalData fiscalData) {
+this.fiscalData = fiscalData;
+}
 	
 	@Override
 	public LinkedHashSet<String> getTarifas()  {
