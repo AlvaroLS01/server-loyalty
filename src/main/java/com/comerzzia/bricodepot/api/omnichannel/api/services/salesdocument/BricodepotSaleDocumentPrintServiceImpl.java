@@ -54,6 +54,7 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
     private static final String ATCUD = "ATCUD";
     private static final String QR = "QR";
     private static final int QR_IMAGE_SIZE = 200;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final SaleDocumentService saleDocumentService;
     private final DocumentService documentService;
@@ -95,6 +96,12 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
         }
 
         try {
+            Map<String, Object> customParams = printRequest.getCustomParams();
+            if (customParams == null) {
+                LOGGER.debug("populateFiscalData() - Print request contains no custom parameters map, skipping fiscal data");
+                return;
+            }
+
             DocumentEntity documentEntity = documentService.findById(datosSesion, documentUid);
             if (documentEntity == null) {
                 LOGGER.debug("populateFiscalData() - Document '{}' not found, skipping fiscal data extraction", documentUid);
@@ -107,7 +114,6 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
                 return;
             }
 
-            Map<String, Object> customParams = printRequest.getCustomParams();
             FiscalDocumentData fiscalData = extractFiscalData(content);
 
             if (!customParams.containsKey(PARAM_FISCAL_DATA_ATCUD) && StringUtils.hasText(fiscalData.getAtcud())) {
@@ -230,8 +236,7 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
     }
 
     private FiscalDocumentData parseFiscalDataFromJson(byte[] jsonContent) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode rootNode = objectMapper.readTree(jsonContent);
+        JsonNode rootNode = OBJECT_MAPPER.readTree(jsonContent);
 
         FiscalDocumentData result = new FiscalDocumentData();
         traverseJson(rootNode, result);

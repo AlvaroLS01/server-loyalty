@@ -64,19 +64,7 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
                                            @Context HttpServletResponse response,
                                            @Valid @BeanParam PrintDocumentRequest printDocumentRequest) throws ApiException {
 
-        PrintDocumentRequest effectiveRequest = printDocumentRequest != null ? printDocumentRequest : new PrintDocumentRequest();
-
-        if (StringUtils.isBlank(effectiveRequest.getMimeType())) {
-            effectiveRequest.setMimeType(APPLICATION_PDF);
-        }
-
-        if (StringUtils.isBlank(effectiveRequest.getOutputDocumentName())) {
-            effectiveRequest.setOutputDocumentName(documentUid);
-        }
-
-        if (effectiveRequest.getInline() == null) {
-            effectiveRequest.setInline(Boolean.FALSE);
-        }
+        PrintDocumentRequest effectiveRequest = preparePrintRequest(documentUid, printDocumentRequest);
 
         PrintDocumentDTO printDocumentDTO = super.modelMapper.map(effectiveRequest, PrintDocumentDTO.class);
 
@@ -90,14 +78,7 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
 
         String base64Content = Base64.getEncoder().encodeToString(printedDocument.getContent());
 
-        String responseFileName = printedDocument.getFileName();
-        if (StringUtils.isBlank(responseFileName)) {
-            responseFileName = documentUid;
-        }
-
-        if (StringUtils.equals(effectiveRequest.getMimeType(), APPLICATION_PDF) && !StringUtils.endsWithIgnoreCase(responseFileName, ".pdf")) {
-            responseFileName = responseFileName + ".pdf";
-        }
+        String responseFileName = resolveResponseFileName(documentUid, effectiveRequest, printedDocument);
 
         BricodepotPrintDocumentResponse responseBody = new BricodepotPrintDocumentResponse(
                 printedDocument.getDocumentUid(),
@@ -107,5 +88,38 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
                 printedDocument.getContentLength());
 
         return Response.ok(responseBody, MediaType.APPLICATION_JSON).build();
+    }
+
+    private PrintDocumentRequest preparePrintRequest(String documentUid, PrintDocumentRequest request) {
+        PrintDocumentRequest effectiveRequest = request != null ? request : new PrintDocumentRequest();
+
+        if (StringUtils.isBlank(effectiveRequest.getMimeType())) {
+            effectiveRequest.setMimeType(APPLICATION_PDF);
+        }
+
+        if (StringUtils.isBlank(effectiveRequest.getOutputDocumentName())) {
+            effectiveRequest.setOutputDocumentName(documentUid);
+        }
+
+        if (effectiveRequest.getInline() == null) {
+            effectiveRequest.setInline(Boolean.FALSE);
+        }
+
+        return effectiveRequest;
+    }
+
+    private String resolveResponseFileName(String documentUid, PrintDocumentRequest request,
+                                           BricodepotPrintedDocument printedDocument) {
+        String responseFileName = printedDocument.getFileName();
+        if (StringUtils.isBlank(responseFileName)) {
+            responseFileName = documentUid;
+        }
+
+        if (StringUtils.equals(request.getMimeType(), APPLICATION_PDF)
+                && !StringUtils.endsWithIgnoreCase(responseFileName, ".pdf")) {
+            responseFileName = responseFileName + ".pdf";
+        }
+
+        return responseFileName;
     }
 }
