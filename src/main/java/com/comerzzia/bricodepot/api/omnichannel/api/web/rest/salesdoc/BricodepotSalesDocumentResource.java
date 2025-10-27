@@ -2,6 +2,7 @@ package com.comerzzia.bricodepot.api.omnichannel.api.web.rest.salesdoc;
 
 import java.util.Base64;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -59,12 +60,26 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
                        @ApiResponse(responseCode = "400", description = "Invalid input values"),
                        @ApiResponse(responseCode = "404", description = "Record not found")
                })
+    @Override
     public Response printSaleDocumentByUid(@PathParam("documentUid") String documentUid,
                                            @Context HttpServletRequest request,
                                            @Context HttpServletResponse response,
                                            @Valid @BeanParam PrintDocumentRequest printDocumentRequest) throws ApiException {
 
-        PrintDocumentRequest effectiveRequest = printDocumentRequest != null ? printDocumentRequest : new PrintDocumentRequest();
+        PrintDocumentRequest effectiveRequest = buildEffectiveRequest(documentUid, printDocumentRequest);
+        PrintDocumentDTO printDocument = mapToPrintDocument(effectiveRequest);
+        mergeCustomParameters(effectiveRequest, printDocument);
+
+        ComerzziaDatosSesion datosSesion = super.datosSesionRequest;
+        BricodepotPrintedDocument printedDocument = saleDocumentPrintService.printDocument(
+                datosSesion.getDatosSesionBean(), documentUid, printDocument);
+
+        BricodepotPrintDocumentResponse responseBody = buildResponse(documentUid, effectiveRequest, printedDocument);
+        return Response.ok(responseBody, MediaType.APPLICATION_JSON).build();
+    }
+
+    private PrintDocumentRequest buildEffectiveRequest(String documentUid, PrintDocumentRequest request) {
+        PrintDocumentRequest effectiveRequest = Optional.ofNullable(request).orElseGet(PrintDocumentRequest::new);
 
         if (StringUtils.isBlank(effectiveRequest.getMimeType())) {
             effectiveRequest.setMimeType(APPLICATION_PDF);
@@ -78,34 +93,44 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
             effectiveRequest.setInline(Boolean.FALSE);
         }
 
-        PrintDocumentDTO printDocumentDTO = super.modelMapper.map(effectiveRequest, PrintDocumentDTO.class);
+        return effectiveRequest;
+    }
 
-        Map<String, String> requestCustomParams = effectiveRequest.getCustomParams();
-        if (requestCustomParams != null && !requestCustomParams.isEmpty()) {
-            printDocumentDTO.getCustomParams().putAll(requestCustomParams);
+    private PrintDocumentDTO mapToPrintDocument(PrintDocumentRequest request) {
+        return super.modelMapper.map(request, PrintDocumentDTO.class);
+    }
+
+    private void mergeCustomParameters(PrintDocumentRequest request, PrintDocumentDTO printDocument) {
+        Map<String, String> customParams = request.getCustomParams();
+        if (customParams == null || customParams.isEmpty()) {
+            return;
         }
 
-        ComerzziaDatosSesion datosSesion = super.datosSesionRequest;
-        BricodepotPrintedDocument printedDocument = saleDocumentPrintService.printDocument(datosSesion.getDatosSesionBean(), documentUid, printDocumentDTO);
+        printDocument.getCustomParams().putAll(customParams);
+    }
 
+    private BricodepotPrintDocumentResponse buildResponse(String documentUid,
+                                                          PrintDocumentRequest request,
+                                                          BricodepotPrintedDocument printedDocument) {
+        String responseFileName = determineResponseFileName(documentUid, request.getMimeType(), printedDocument.getFileName());
         String base64Content = Base64.getEncoder().encodeToString(printedDocument.getContent());
 
-        String responseFileName = printedDocument.getFileName();
-        if (StringUtils.isBlank(responseFileName)) {
-            responseFileName = documentUid;
-        }
-
-        if (StringUtils.equals(effectiveRequest.getMimeType(), APPLICATION_PDF) && !StringUtils.endsWithIgnoreCase(responseFileName, ".pdf")) {
-            responseFileName = responseFileName + ".pdf";
-        }
-
-        BricodepotPrintDocumentResponse responseBody = new BricodepotPrintDocumentResponse(
+        return new BricodepotPrintDocumentResponse(
                 printedDocument.getDocumentUid(),
                 responseFileName,
                 printedDocument.getMimeType(),
                 base64Content,
                 printedDocument.getContentLength());
+    }
 
-        return Response.ok(responseBody, MediaType.APPLICATION_JSON).build();
+    private String determineResponseFileName(String documentUid, String requestedMimeType, String candidateFileName) {
+        String responseFileName = StringUtils.defaultIfBlank(candidateFileName, documentUid);
+
+        boolean isPdfRequest = StringUtils.equals(requestedMimeType, APPLICATION_PDF);
+        if (isPdfRequest && !StringUtils.endsWithIgnoreCase(responseFileName, ".pdf")) {
+            return responseFileName + ".pdf";
+        }
+
+        return responseFileName;
     }
 }
