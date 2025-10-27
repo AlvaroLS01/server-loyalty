@@ -64,34 +64,7 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
                                            @Context HttpServletResponse response,
                                            @Valid @BeanParam PrintDocumentRequest printDocumentRequest) throws ApiException {
 
-        PrintDocumentRequest effectiveRequest = preparePrintRequest(documentUid, printDocumentRequest);
-
-        PrintDocumentDTO printDocumentDTO = super.modelMapper.map(effectiveRequest, PrintDocumentDTO.class);
-
-        Map<String, String> requestCustomParams = effectiveRequest.getCustomParams();
-        if (requestCustomParams != null && !requestCustomParams.isEmpty()) {
-            printDocumentDTO.getCustomParams().putAll(requestCustomParams);
-        }
-
-        ComerzziaDatosSesion datosSesion = super.datosSesionRequest;
-        BricodepotPrintedDocument printedDocument = saleDocumentPrintService.printDocument(datosSesion.getDatosSesionBean(), documentUid, printDocumentDTO);
-
-        String base64Content = Base64.getEncoder().encodeToString(printedDocument.getContent());
-
-        String responseFileName = resolveResponseFileName(documentUid, effectiveRequest, printedDocument);
-
-        BricodepotPrintDocumentResponse responseBody = new BricodepotPrintDocumentResponse(
-                printedDocument.getDocumentUid(),
-                responseFileName,
-                printedDocument.getMimeType(),
-                base64Content,
-                printedDocument.getContentLength());
-
-        return Response.ok(responseBody, MediaType.APPLICATION_JSON).build();
-    }
-
-    private PrintDocumentRequest preparePrintRequest(String documentUid, PrintDocumentRequest request) {
-        PrintDocumentRequest effectiveRequest = request != null ? request : new PrintDocumentRequest();
+        PrintDocumentRequest effectiveRequest = printDocumentRequest != null ? printDocumentRequest : new PrintDocumentRequest();
 
         if (StringUtils.isBlank(effectiveRequest.getMimeType())) {
             effectiveRequest.setMimeType(APPLICATION_PDF);
@@ -105,21 +78,34 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
             effectiveRequest.setInline(Boolean.FALSE);
         }
 
-        return effectiveRequest;
-    }
+        PrintDocumentDTO printDocumentDTO = super.modelMapper.map(effectiveRequest, PrintDocumentDTO.class);
 
-    private String resolveResponseFileName(String documentUid, PrintDocumentRequest request,
-                                           BricodepotPrintedDocument printedDocument) {
+        Map<String, String> requestCustomParams = effectiveRequest.getCustomParams();
+        if (requestCustomParams != null && !requestCustomParams.isEmpty()) {
+            printDocumentDTO.getCustomParams().putAll(requestCustomParams);
+        }
+
+        ComerzziaDatosSesion datosSesion = super.datosSesionRequest;
+        BricodepotPrintedDocument printedDocument = saleDocumentPrintService.printDocument(datosSesion.getDatosSesionBean(), documentUid, printDocumentDTO);
+
+        String base64Content = Base64.getEncoder().encodeToString(printedDocument.getContent());
+
         String responseFileName = printedDocument.getFileName();
         if (StringUtils.isBlank(responseFileName)) {
             responseFileName = documentUid;
         }
 
-        if (StringUtils.equals(request.getMimeType(), APPLICATION_PDF)
-                && !StringUtils.endsWithIgnoreCase(responseFileName, ".pdf")) {
+        if (StringUtils.equals(effectiveRequest.getMimeType(), APPLICATION_PDF) && !StringUtils.endsWithIgnoreCase(responseFileName, ".pdf")) {
             responseFileName = responseFileName + ".pdf";
         }
 
-        return responseFileName;
+        BricodepotPrintDocumentResponse responseBody = new BricodepotPrintDocumentResponse(
+                printedDocument.getDocumentUid(),
+                responseFileName,
+                printedDocument.getMimeType(),
+                base64Content,
+                printedDocument.getContentLength());
+
+        return Response.ok(responseBody, MediaType.APPLICATION_JSON).build();
     }
 }

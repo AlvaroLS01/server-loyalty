@@ -14,10 +14,8 @@ import javax.ws.rs.ext.Provider;
 
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.stereotype.Component;
 
 @Provider
-@Component
 public class DocumentoVentaImpresionFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
     private static final String DOCUMENT_UID_PARAM = "documentUid";
