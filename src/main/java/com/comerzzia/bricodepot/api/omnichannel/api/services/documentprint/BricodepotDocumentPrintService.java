@@ -2,9 +2,13 @@ package com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -58,6 +62,7 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
             return;
         }
 
+        ensurePortugueseTemplateCompatibility(jrxmlFile);
         ensureParentDirectory(jasperFile);
 
         try {
@@ -67,6 +72,68 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
         } catch (JRException exception) {
             LOGGER.warn("Failed to compile Jasper template '{}' from '{}'", absolutePath, jrxmlFile.getAbsolutePath(), exception);
         }
+    }
+
+    private void ensurePortugueseTemplateCompatibility(File jrxmlFile) {
+        if (jrxmlFile == null) {
+            return;
+        }
+
+        String name = jrxmlFile.getName();
+        if (!"facturaA4_PT.jrxml".equalsIgnoreCase(name) && !"facturaDevolucionA4_PT.jrxml".equalsIgnoreCase(name)) {
+            return;
+        }
+
+        try {
+            String content = new String(Files.readAllBytes(jrxmlFile.toPath()), StandardCharsets.UTF_8);
+            String updatedContent = patchAtcudExpressions(content);
+
+            if (!updatedContent.equals(content)) {
+                Files.write(jrxmlFile.toPath(), updatedContent.getBytes(StandardCharsets.UTF_8));
+                LOGGER.debug("ensurePortugueseTemplateCompatibility() - Patched fiscal data expressions in '{}'", jrxmlFile.getAbsolutePath());
+            }
+        } catch (IOException exception) {
+            LOGGER.warn("ensurePortugueseTemplateCompatibility() - Unable to adjust template '{}'", jrxmlFile.getAbsolutePath(), exception);
+        }
+    }
+
+    private String patchAtcudExpressions(String content) {
+        if (content == null) {
+            return "";
+        }
+
+        String result = content;
+        if (!result.contains("name=\"fiscalData_ACTUD\"")) {
+            result = injectFiscalParameters(result);
+        } else if (!result.contains("name=\"fiscalData_QR\"")) {
+            result = result.replace("name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>",
+                    "name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>");
+        }
+
+        result = PROPERTY_VALUE_PATTERN.matcher(result).replaceAll("$P{fiscalData_ACTUD}");
+        result = PROPERTY_PATTERN.matcher(result).replaceAll("$P{fiscalData_ACTUD}");
+
+        return result;
+    }
+
+    private String injectFiscalParameters(String content) {
+        String marker = "<parameter name=\"ticket\"";
+        int markerIndex = content.indexOf(marker);
+        if (markerIndex < 0) {
+            return content;
+        }
+
+        int insertIndex = content.indexOf('\n', markerIndex);
+        if (insertIndex < 0) {
+            insertIndex = markerIndex + marker.length();
+        }
+
+        StringBuilder builder = new StringBuilder(content.length() + 160);
+        builder.append(content, 0, insertIndex + 1);
+        builder.append("        <parameter name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n");
+        builder.append("        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>\n");
+        builder.append(content.substring(insertIndex + 1));
+        return builder.toString();
     }
 
     private void compileSiblingTemplates(File directory, File primaryJrxml) {
@@ -176,4 +243,7 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
             return pathname.isFile() && StringUtils.endsWithIgnoreCase(pathname.getName(), ".jrxml");
         }
     }
+
+    private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\.getProperty\\(\\\"ATCUD\\\"\\)");
+    private static final Pattern PROPERTY_VALUE_PATTERN = Pattern.compile("\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\.getProperty(?:Value)?\\(\\\"ATCUD\\\"\\)(?:\\.getValue\\(\\))?");
 }
