@@ -50,6 +50,7 @@ public class BricodepotSalesDocumentResource extends SalesDocumentResource {
         this.saleDocumentPrintService = saleDocumentPrintService;
     }
 
+    @Override
     @GET
     @Path("/{documentUid}/print")
     @Operation(summary = "Print sales document by uid",
