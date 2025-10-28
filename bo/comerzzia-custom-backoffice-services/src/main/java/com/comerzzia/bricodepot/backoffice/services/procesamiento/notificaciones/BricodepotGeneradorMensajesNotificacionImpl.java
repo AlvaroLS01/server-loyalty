@@ -68,7 +68,7 @@ import com.comerzzia.core.util.config.PlantillasInfo;
 import com.comerzzia.core.util.db.Connection;
 import com.comerzzia.model.general.almacenes.AlmacenBean;
 import com.comerzzia.model.general.servicios.ServicioBean;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 import com.comerzzia.persistencia.general.almacenes.AlmacenesDao;
 import com.comerzzia.servicios.general.tiendas.ServicioTiendasImpl;
 import com.comerzzia.servicios.general.tiendas.Tienda;

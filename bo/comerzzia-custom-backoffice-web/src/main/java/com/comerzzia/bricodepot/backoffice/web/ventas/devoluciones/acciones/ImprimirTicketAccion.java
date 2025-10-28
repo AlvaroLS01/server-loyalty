@@ -47,7 +47,7 @@ import com.comerzzia.core.util.base64.Base64Coder;
 import com.comerzzia.core.util.xml.XMLDocumentException;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.LineaTicket;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.PagoTicket;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 import com.comerzzia.web.base.InformeAccion;
 import com.comerzzia.web.base.Vista;
 import com.comerzzia.web.base.WebKeys;

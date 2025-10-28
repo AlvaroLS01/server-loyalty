@@ -43,7 +43,7 @@ import com.comerzzia.core.util.xml.XMLDocumentNode;
 import com.comerzzia.core.util.xml.XMLDocumentNodeNotFoundException;
 import com.comerzzia.model.fidelizacion.tarjetas.TarjetaBean;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.LineaTicket;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 import com.comerzzia.servicios.fidelizacion.tarjetas.ServicioTarjetasImpl;
 import com.comerzzia.servicios.fidelizacion.tarjetas.TarjetaNotFoundException;
 import com.comerzzia.web.base.InformeAccion;

@@ -50,7 +50,7 @@ import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.C
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.DatosDocumentoOrigenTicket;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.LineaTicket;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.PagoTicket;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 import com.comerzzia.persistencia.ventas.albaranes.articulos.ArticulosAlbaranesVentasDao;
 import com.comerzzia.persistencia.ventas.albaranes.articulos.ParCantidadLineaBean;
 import com.comerzzia.servicios.ventas.albaranes.AlbaranVenta;

@@ -9,7 +9,7 @@ import com.comerzzia.core.model.ventas.tickets.TicketBean;
 import com.comerzzia.core.servicios.sesion.IDatosSesion;
 import com.comerzzia.core.util.xml.XMLDocumentException;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.LineaTicket;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 
 public interface CargarFacturaA4Servicio {
 	
