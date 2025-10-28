@@ -7,7 +7,7 @@
 		<defaultValueExpression><![CDATA[".//"]]></defaultValueExpression>
 	</parameter>
 	<parameter name="LOGO" class="java.io.InputStream"/>
-	<parameter name="ticket" class="com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono"/>
+	<parameter name="ticket" class="com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono"/>
 	<parameter name="DEVOLUCION" class="java.lang.Boolean"/>
 	<parameter name="QR_ESPAÑA" class="java.io.InputStream"/>
 	<parameter name="esDuplicado" class="java.lang.Boolean"/>
@@ -285,14 +285,14 @@
 				<textElement textAlignment="Left">
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA["$P{ticket}.getCabecera().getFechaAsLocale()"]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
 				<reportElement x="71" y="39" width="192" height="11" uuid="e22d368d-0b86-4350-992a-c4d9aa819bac"/>
 				<textElement textAlignment="Left">
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA["$P{ticket}.getCabecera().getFechaAsLocale()"]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="5" y="6" width="66" height="11" uuid="7a081966-3c4b-434e-8aa3-5523d03ec731"/>
@@ -341,12 +341,12 @@
 				<textElement textAlignment="Left">
 					<font fontName="Tahoma" size="9" isBold="false"/>
 				</textElement>
-				<textFieldExpression><![CDATA["$P{ticket}.getIdTicket()"]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[$P{ticket}.getIdTicket()]]></textFieldExpression>
 			</textField>
 			<componentElement>
 				<reportElement x="324" y="17" width="211" height="30" uuid="3b046719-e05a-492c-9aa3-f9b39561cb91"/>
 				<jr:Code128 xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" textPosition="bottom">
-					<jr:codeExpression><![CDATA["$P{ticket}.getCabecera().getLocalizador()"]]></jr:codeExpression>
+                                        <jr:codeExpression><![CDATA[$P{ticket}.getCabecera().getLocalizador()]]></jr:codeExpression>
 				</jr:Code128>
 			</componentElement>
 			<staticText>
@@ -445,7 +445,7 @@
 				<textElement>
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA["$P{ticket}.getCabecera().getFechaAsLocale()"]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="71" y="72" width="192" height="11" uuid="f2a7c3a5-19f5-4847-882b-93af96b90f1b">

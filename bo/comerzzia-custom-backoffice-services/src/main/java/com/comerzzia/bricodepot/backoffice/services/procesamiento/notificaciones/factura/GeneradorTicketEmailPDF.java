@@ -22,7 +22,7 @@ import com.comerzzia.core.servicios.ventas.tickets.ServicioTicketsImpl;
 import com.comerzzia.core.util.config.AppInfo;
 import com.comerzzia.core.util.db.Database;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.LineaTicket;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.session.SqlSession;
