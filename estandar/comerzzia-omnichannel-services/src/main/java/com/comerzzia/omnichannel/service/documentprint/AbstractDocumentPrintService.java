@@ -94,8 +94,12 @@ public abstract class AbstractDocumentPrintService {
 		docParameters.put(DocumentPrintService.PARAM_COUNTRY_ID, locale.getCountry().toLowerCase());
 		docParameters.put(DocumentPrintService.PARAM_LOCALE_ID, locale.getDisplayLanguage());
 
-		// push custom request parameters
-		docParameters.putAll(printRequest.getCustomParams());
+                // push custom request parameters
+                docParameters.putAll(printRequest.getCustomParams());
+
+                if (Boolean.TRUE.equals(printRequest.getCopy()) && !docParameters.containsKey("esDuplicado")) {
+                        docParameters.put("esDuplicado", Boolean.TRUE);
+                }
 
 		// currency
 		String currencyCode = (String) docParameters.get(DocumentPrintService.PARAM_CURRENCY_CODE);
