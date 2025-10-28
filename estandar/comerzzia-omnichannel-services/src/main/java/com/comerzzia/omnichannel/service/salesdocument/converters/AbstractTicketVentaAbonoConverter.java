@@ -2,12 +2,12 @@ package com.comerzzia.omnichannel.service.salesdocument.converters;
 
 import java.io.OutputStream;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.nio.charset.StandardCharsets;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -101,46 +101,20 @@ public abstract class AbstractTicketVentaAbonoConverter<T extends TicketVentaAbo
 
 	@SuppressWarnings("unchecked")
 	@Override
-        public T convert(final byte[] content) {
-                Class<T> genericType = (Class<T>) GenericTypeResolver.resolveTypeArgument(getClass(), AbstractTicketVentaAbonoConverter.class);
-                String xmlContent = new String(content, StandardCharsets.UTF_8);
+	public T convert(final byte[] content) {
+		Class<T> genericType = (Class<T>) GenericTypeResolver.resolveTypeArgument(getClass(), AbstractTicketVentaAbonoConverter.class);
+		
+		JAXBContext jaxbContext;
+		try {
+			jaxbContext = JAXBContext.newInstance(genericType);
 
-                try {
-                        return unmarshal(xmlContent, genericType);
-                } catch (JAXBException primaryException) {
-                        T fallback = tryTicketFallback(xmlContent, genericType);
-                        if (fallback != null) {
-                                return fallback;
-                        }
-                        throw new RuntimeException(primaryException);
-                }
-        }
+			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
 
-        private <R extends TicketVentaAbono> R unmarshal(String xmlContent, Class<R> type) throws JAXBException {
-                JAXBContext jaxbContext = JAXBContext.newInstance(type);
-                Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-                return type.cast(jaxbUnmarshaller.unmarshal(new StringReader(xmlContent)));
-        }
-
-        private T tryTicketFallback(String xmlContent, Class<T> targetType) {
-                try {
-                        TicketVentaAbono ticket = unmarshal(xmlContent, TicketVentaAbono.class);
-                        if (ticket == null) {
-                                return null;
-                        }
-
-                        if (targetType.isInstance(ticket)) {
-                                return targetType.cast(ticket);
-                        }
-
-                        if (modelMapper != null && TicketVentaAbono.class.isAssignableFrom(targetType)) {
-                                return modelMapper.map(ticket, targetType);
-                        }
-                } catch (JAXBException | RuntimeException ignored) {
-                        // Fallback failed, let the caller rethrow the original exception
-                }
-                return null;
-        }
+			return (T) jaxbUnmarshaller.unmarshal(new StringReader(new String(content, "UTF-8")));
+		} catch (JAXBException | UnsupportedEncodingException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	@Override
 	public DocumentMetadata getMetadata(IDatosSesion datosSesion, DocumentEntity document) {
