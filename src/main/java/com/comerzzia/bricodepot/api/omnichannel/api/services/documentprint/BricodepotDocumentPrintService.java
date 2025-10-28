@@ -85,11 +85,11 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
         }
 
         try {
-            String content = Files.readString(jrxmlFile.toPath(), StandardCharsets.UTF_8);
+            String content = new String(Files.readAllBytes(jrxmlFile.toPath()), StandardCharsets.UTF_8);
             String updatedContent = patchAtcudExpressions(content);
 
             if (!updatedContent.equals(content)) {
-                Files.writeString(jrxmlFile.toPath(), updatedContent, StandardCharsets.UTF_8);
+                Files.write(jrxmlFile.toPath(), updatedContent.getBytes(StandardCharsets.UTF_8));
                 LOGGER.debug("ensurePortugueseTemplateCompatibility() - Patched fiscal data expressions in '{}'", jrxmlFile.getAbsolutePath());
             }
         } catch (IOException exception) {
