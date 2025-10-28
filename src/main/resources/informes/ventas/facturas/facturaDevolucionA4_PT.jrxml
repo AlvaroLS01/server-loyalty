@@ -7,7 +7,7 @@
 		<defaultValueExpression><![CDATA[".//"]]></defaultValueExpression>
 	</parameter>
 	<parameter name="LOGO" class="java.io.InputStream"/>
-	<parameter name="ticket" class="com.comerzzia.pos.services.ticket.ITicket"/>
+	<parameter name="ticket" class="com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono"/>
 	<parameter name="fiscalData_ACTUD" class="java.lang.String"/>
 	<parameter name="QR_PORTUGAL" class="java.io.InputStream"/>
 	<parameter name="esDuplicado" class="java.lang.Boolean"/>
