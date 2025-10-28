@@ -28,6 +28,7 @@ public class BricodepotDocumentMetadataParser extends DocumentMetadataParser {
         registerAlias(aliases, "FS", DEFAULT_FACTURA_TEMPLATE);
         registerAlias(aliases, "NC", DEFAULT_FACTURA_TEMPLATE);
         registerAlias(aliases, "VC", DEFAULT_FACTURA_TEMPLATE);
+        registerAlias(aliases, "FR", DEFAULT_FACTURA_TEMPLATE);
         registerAlias(aliases, "facturaA4", DEFAULT_FACTURA_TEMPLATE);
         registerAlias(aliases, "factura", DEFAULT_FACTURA_TEMPLATE);
         TEMPLATE_ALIASES = Collections.unmodifiableMap(aliases);
