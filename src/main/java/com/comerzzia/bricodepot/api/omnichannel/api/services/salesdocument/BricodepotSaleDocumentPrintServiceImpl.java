@@ -47,6 +47,7 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
     private static final String PARAM_FISCAL_DATA_ATCUD = "fiscalData_ACTUD";
     private static final String PARAM_FISCAL_DATA_QR = "fiscalData_QR";
     private static final String PARAM_QR_PORTUGAL = "QR_PORTUGAL";
+    private static final String PARAM_DUPLICATE_FLAG = "esDuplicado";
     private static final String TAG_FISCAL_DATA = "fiscal_data";
     private static final String TAG_PROPERTY = "property";
     private static final String TAG_NAME = "name";
@@ -70,6 +71,7 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
         LOGGER.debug("printDocument() - Generating sales document '{}' with mime type '{}'", documentUid, printRequest.getMimeType());
 
         populateFiscalData(datosSesion, documentUid, printRequest);
+        applyDuplicateFlag(printRequest);
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             saleDocumentService.printDocument(outputStream, datosSesion, documentUid, printRequest);
@@ -124,6 +126,18 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
             }
         } catch (Exception exception) {
             LOGGER.warn("populateFiscalData() - Unable to extract fiscal data for document '{}'", documentUid, exception);
+        }
+    }
+
+    private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
+        if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
+            return;
+        }
+
+        Map<String, Object> customParams = printRequest.getCustomParams();
+        if (!customParams.containsKey(PARAM_DUPLICATE_FLAG)) {
+            customParams.put(PARAM_DUPLICATE_FLAG, Boolean.TRUE);
+            LOGGER.debug("applyDuplicateFlag() - Flagging document copy request with parameter '{}'", PARAM_DUPLICATE_FLAG);
         }
     }
 
