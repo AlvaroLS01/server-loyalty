@@ -6,7 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 
-@XmlRootElement(name = "FR_1_1_Document")
+@XmlRootElement(name = "ticket")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class FR_1_1_Document extends TicketVentaAbono {
 }
