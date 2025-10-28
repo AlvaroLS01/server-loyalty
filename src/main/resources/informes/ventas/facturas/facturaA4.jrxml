@@ -280,20 +280,20 @@
 				</textElement>
 				<text><![CDATA[Fecha ticket:]]></text>
 			</staticText>
-                        <textField isBlankWhenNull="true">
-                                <reportElement x="71" y="17" width="192" height="11" uuid="6c165bfc-b21d-4f14-99b8-ea23bbf157e2"/>
-                                <textElement textAlignment="Left">
-                                        <font fontName="Tahoma" size="9"/>
-                                </textElement>
-                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.util.DateFormatUtil.formatDate($P{ticket}.getCabecera().getFecha(), "dd/MM/yyyy")]]></textFieldExpression>
-                        </textField>
-                        <textField isBlankWhenNull="true">
-                                <reportElement x="71" y="39" width="192" height="11" uuid="e22d368d-0b86-4350-992a-c4d9aa819bac"/>
-                                <textElement textAlignment="Left">
-                                        <font fontName="Tahoma" size="9"/>
-                                </textElement>
-                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.util.DateFormatUtil.formatDate($P{ticket}.getCabecera().getFecha(), "dd/MM/yyyy")]]></textFieldExpression>
-                        </textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="71" y="17" width="192" height="11" uuid="6c165bfc-b21d-4f14-99b8-ea23bbf157e2"/>
+				<textElement textAlignment="Left">
+					<font fontName="Tahoma" size="9"/>
+				</textElement>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="71" y="39" width="192" height="11" uuid="e22d368d-0b86-4350-992a-c4d9aa819bac"/>
+				<textElement textAlignment="Left">
+					<font fontName="Tahoma" size="9"/>
+				</textElement>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
+			</textField>
 			<staticText>
 				<reportElement x="5" y="6" width="66" height="11" uuid="7a081966-3c4b-434e-8aa3-5523d03ec731"/>
 				<textElement>
@@ -341,7 +341,7 @@
 				<textElement textAlignment="Left">
 					<font fontName="Tahoma" size="9" isBold="false"/>
 				</textElement>
-                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getIdTicket()]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[$P{ticket}.getIdTicket()]]></textFieldExpression>
 			</textField>
 			<componentElement>
 				<reportElement x="324" y="17" width="211" height="30" uuid="3b046719-e05a-492c-9aa3-f9b39561cb91"/>
@@ -440,13 +440,13 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$P{ticket}.getCabecera().getCliente().getDesCliente()]]></textFieldExpression>
 			</textField>
-                        <textField isBlankWhenNull="true">
-                                <reportElement x="71" y="61" width="192" height="11" uuid="e4816aab-5a29-4254-bbd4-5235d05e5ef8"/>
-                                <textElement>
-                                        <font fontName="Tahoma" size="9"/>
-                                </textElement>
-                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.util.DateFormatUtil.formatDate($P{ticket}.getCabecera().getFecha(), "dd/MM/yyyy")]]></textFieldExpression>
-                        </textField>
+			<textField>
+				<reportElement x="71" y="61" width="192" height="11" uuid="e4816aab-5a29-4254-bbd4-5235d05e5ef8"/>
+				<textElement>
+					<font fontName="Tahoma" size="9"/>
+				</textElement>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
+			</textField>
 			<textField>
 				<reportElement x="71" y="72" width="192" height="11" uuid="f2a7c3a5-19f5-4847-882b-93af96b90f1b">
 					<printWhenExpression><![CDATA[$P{DEVOLUCION} == true]]></printWhenExpression>
