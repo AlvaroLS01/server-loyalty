@@ -39,7 +39,7 @@ import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.L
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.PagoTicket;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.SubtotalIvaTicket;
 import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TarjetaRegaloTicket;
-import com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;

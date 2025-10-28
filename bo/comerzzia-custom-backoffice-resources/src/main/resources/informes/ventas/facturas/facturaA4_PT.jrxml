@@ -7,7 +7,7 @@
 		<defaultValueExpression><![CDATA[".//"]]></defaultValueExpression>
 	</parameter>
 	<parameter name="LOGO" class="java.io.InputStream"/>
-	<parameter name="ticket" class="com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono"/>
+	<parameter name="ticket" class="com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono"/>
 	<parameter name="QR_PORTUGAL" class="java.io.InputStream"/>
 	<parameter name="DEVOLUCION" class="java.lang.Boolean"/>
 	<parameter name="esDuplicado" class="java.lang.Boolean"/>
@@ -594,7 +594,7 @@
 				<textElement>
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$P{ticket}.getCabecera().getCajero()]]></textFieldExpression>
+                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getCajero() != null ? $P{ticket}.getCabecera().getCajero().getDesusuario() : ""]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement uuid="7a081966-3c4b-434e-8aa3-5523d03ec731" x="8" y="251" width="52" height="11"/>
