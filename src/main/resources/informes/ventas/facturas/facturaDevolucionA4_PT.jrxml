@@ -324,20 +324,20 @@
 				</textElement>
 				<text><![CDATA[Fecha ticket]]></text>
 			</staticText>
-                        <textField isBlankWhenNull="true">
-                                <reportElement x="91" y="17" width="127" height="11" uuid="6c165bfc-b21d-4f14-99b8-ea23bbf157e2"/>
-                                <textElement textAlignment="Left">
-                                        <font fontName="Tahoma" size="9"/>
-                                </textElement>
-                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.util.DateFormatUtil.formatDate($P{ticket}.getCabecera().getFecha(), "dd/MM/yyyy")]]></textFieldExpression>
-                        </textField>
-                        <textField isBlankWhenNull="true">
-                                <reportElement x="91" y="39" width="127" height="11" uuid="e22d368d-0b86-4350-992a-c4d9aa819bac"/>
-                                <textElement textAlignment="Left">
-                                        <font fontName="Tahoma" size="9"/>
-                                </textElement>
-                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.util.DateFormatUtil.formatDate($P{ticket}.getCabecera().getFecha(), "dd/MM/yyyy")]]></textFieldExpression>
-                        </textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="91" y="17" width="127" height="11" uuid="6c165bfc-b21d-4f14-99b8-ea23bbf157e2"/>
+				<textElement textAlignment="Left">
+					<font fontName="Tahoma" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="91" y="39" width="127" height="11" uuid="e22d368d-0b86-4350-992a-c4d9aa819bac"/>
+				<textElement textAlignment="Left">
+					<font fontName="Tahoma" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{ticket}.getCabecera().getFechaAsLocale()]]></textFieldExpression>
+			</textField>
 			<staticText>
 				<reportElement x="257" y="228" width="40" height="16" uuid="e58fe4c0-4a50-4ef2-904b-3a5968bf9195"/>
 				<textElement textAlignment="Center" verticalAlignment="Bottom">
@@ -425,7 +425,7 @@ Neto]]></text>
 				<textElement textAlignment="Left">
 					<font fontName="Tahoma" size="9" isBold="false"/>
 				</textElement>
-                                <textFieldExpression><![CDATA[$P{ticket}.getCabecera().getIdTicket()]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{ticket}.getIdTicket()]]></textFieldExpression>
 			</textField>
 			<componentElement>
 				<reportElement x="383" y="7" width="152" height="30" uuid="3b046719-e05a-492c-9aa3-f9b39561cb91"/>

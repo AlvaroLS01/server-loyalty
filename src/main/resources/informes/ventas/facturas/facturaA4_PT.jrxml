@@ -512,13 +512,21 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$P{numPedido}]]></textFieldExpression>
 			</textField>
-                        <textField isBlankWhenNull="true">
-                                <reportElement uuid="e22d368d-0b86-4350-992a-c4d9aa819bac" x="110" y="163" width="192" height="11"/>
-                                <textElement textAlignment="Left">
-                                        <font fontName="Tahoma" size="9"/>
-                                </textElement>
-                                <textFieldExpression><![CDATA[com.comerzzia.bricodepot.api.omnichannel.api.util.DateFormatUtil.formatDate($P{ticket}.getCabecera().getFecha(), "dd/MM/yyyy")]]></textFieldExpression>
-                        </textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="e22d368d-0b86-4350-992a-c4d9aa819bac" x="110" y="163" width="192" height="11"/>
+				<textElement textAlignment="Left">
+					<font fontName="Tahoma" size="9"/>
+				</textElement>
+                                <textFieldExpression><![CDATA[
+        $P{ticket}.getCabecera().getFecha() == null
+                ? ""
+                : new java.text.SimpleDateFormat("dd/MM/yyyy").format(
+                        $P{ticket}.getCabecera().getFecha() instanceof java.util.Date
+                                ? (java.util.Date) $P{ticket}.getCabecera().getFecha()
+                                : new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse($P{ticket}.getCabecera().getFecha().toString())
+                )
+        ]]></textFieldExpression>
+			</textField>
 			<staticText>
 				<reportElement uuid="7a081966-3c4b-434e-8aa3-5523d03ec731" x="8" y="119" width="102" height="11"/>
 				<textElement>
