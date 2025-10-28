@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 
 import com.comerzzia.omnichannel.model.documents.sales.FR_1_1_Document;
 
-@Component
+@Component("FR_1_1_DocumentConverter")
 @Scope("prototype")
 public class FR_1_1_DocumentConverter extends AbstractTicketVentaAbonoConverter<FR_1_1_Document> {
 }
