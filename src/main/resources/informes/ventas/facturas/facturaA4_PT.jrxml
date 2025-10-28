@@ -7,7 +7,7 @@
 		<defaultValueExpression><![CDATA[".//"]]></defaultValueExpression>
 	</parameter>
 	<parameter name="LOGO" class="java.io.InputStream"/>
-        <parameter name="ticket" class="com.comerzzia.omnichannel.documentos.facturas.converters.albaran.ticket.TicketVentaAbono"/>
+        <parameter name="ticket" class="com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono"/>
 	<parameter name="QR_PORTUGAL" class="java.io.InputStream"/>
 	<parameter name="DEVOLUCION" class="java.lang.Boolean"/>
 	<parameter name="esDuplicado" class="java.lang.Boolean"/>
@@ -518,13 +518,9 @@
 					<font fontName="Tahoma" size="9"/>
 				</textElement>
                                 <textFieldExpression><![CDATA[
-        $P{ticket}.getCabecera().getFecha() == null
-                ? ""
-                : new java.text.SimpleDateFormat("dd/MM/yyyy").format(
-                        $P{ticket}.getCabecera().getFecha() instanceof java.util.Date
-                                ? (java.util.Date) $P{ticket}.getCabecera().getFecha()
-                                : new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse($P{ticket}.getCabecera().getFecha().toString())
-                )
+        com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.JasperDateUtils.formatDayMonthYear(
+                $P{ticket}.getCabecera().getFecha()
+        )
         ]]></textFieldExpression>
 			</textField>
 			<staticText>
