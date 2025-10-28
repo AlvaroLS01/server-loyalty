@@ -5,10 +5,15 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -28,6 +33,7 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BricodepotDocumentPrintService.class);
     private static final Set<String> COMPILED_TEMPLATES = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentMap<String, File> TEMPLATE_RESOLUTION_CACHE = new ConcurrentHashMap<>();
 
     @Override
     protected File getTemplateLocaleFile(String template, String localeId) {
@@ -210,9 +216,21 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
         }
 
         File candidate = buildTemplateCandidate(basePath + template, localeId);
-        if (!candidate.exists() && template.contains("/")) {
+        if (candidate.exists()) {
+            return candidate;
+        }
+
+        if (template.contains("/")) {
             String normalizedTemplate = template.replace('/', File.separatorChar);
-            candidate = buildTemplateCandidate(basePath + normalizedTemplate, localeId);
+            File normalizedCandidate = buildTemplateCandidate(basePath + normalizedTemplate, localeId);
+            if (normalizedCandidate.exists()) {
+                return normalizedCandidate;
+            }
+        } else {
+            File resolved = locateTemplateInReportsDirectory(basePath, template, localeId);
+            if (resolved != null) {
+                return resolved;
+            }
         }
 
         return candidate;
@@ -235,6 +253,66 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
         }
 
         return result;
+    }
+
+    private File locateTemplateInReportsDirectory(String basePath, String template, String localeId) {
+        if (StringUtils.isBlank(basePath) || StringUtils.isBlank(template)) {
+            return null;
+        }
+
+        File baseDirectory = new File(basePath);
+        if (!baseDirectory.isDirectory()) {
+            return null;
+        }
+
+        for (String candidateName : buildCandidateNames(template, localeId)) {
+            File cached = TEMPLATE_RESOLUTION_CACHE.get(candidateName);
+            if (cached != null) {
+                if (cached.exists()) {
+                    return cached;
+                }
+                TEMPLATE_RESOLUTION_CACHE.remove(candidateName);
+            }
+
+            File located = searchTemplateRecursively(baseDirectory, candidateName);
+            if (located != null) {
+                TEMPLATE_RESOLUTION_CACHE.put(candidateName, located);
+                return located;
+            }
+        }
+
+        return null;
+    }
+
+    private List<String> buildCandidateNames(String template, String localeId) {
+        String extension = getTemplateExtension();
+        List<String> candidates = new ArrayList<>(3);
+        String locale = localeId != null ? localeId.toLowerCase(Locale.ROOT) : null;
+
+        if (StringUtils.isNotBlank(locale)) {
+            candidates.add(template + "_" + locale + extension);
+            if (locale.length() >= 2) {
+                candidates.add(template + "_" + StringUtils.left(locale, 2) + extension);
+            }
+        }
+
+        candidates.add(template + extension);
+        return candidates;
+    }
+
+    private File searchTemplateRecursively(File baseDirectory, String candidateName) {
+        try (Stream<Path> paths = Files.walk(baseDirectory.toPath())) {
+            return paths
+                    .filter(Files::isRegularFile)
+                    .filter(path -> candidateName.equalsIgnoreCase(path.getFileName().toString()))
+                    .findFirst()
+                    .map(Path::toFile)
+                    .orElse(null);
+        } catch (IOException exception) {
+            LOGGER.warn("locateTemplateInReportsDirectory() - Unable to resolve template '{}' under '{}'", candidateName,
+                    baseDirectory.getAbsolutePath(), exception);
+            return null;
+        }
     }
 
     private static final class JrxmlFilter implements FileFilter {
