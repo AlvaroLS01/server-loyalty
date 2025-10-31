@@ -451,7 +451,8 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                         return content;
                 }
 
-                String result = DESGLOSE_PATTERN.matcher(content).replaceAll(DESGLOSE_REPLACEMENT);
+                String result = DESGLOSE_PATTERN.matcher(content)
+                        .replaceAll(Matcher.quoteReplacement(DESGLOSE_REPLACEMENT));
                 result = DESGLOSE_ZERO_PATTERN.matcher(result)
                         .replaceAll("java.math.BigDecimal.ZERO.setScale(2, java.math.RoundingMode.HALF_UP)");
                 return result;
