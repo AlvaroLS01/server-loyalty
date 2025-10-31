@@ -108,19 +108,28 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                         if (jasperFile == null) {
                                 continue;
                         }
-			ensureParentDirectory(jasperFile);
+                        String jasperPath = jasperFile.getAbsolutePath();
+                        if (COMPILED_TEMPLATES.contains(jasperPath)) {
+                                continue;
+                        }
 
-			try {
-				if (!jasperFile.exists() || jrxmlFile.lastModified() >= jasperFile.lastModified()) {
-					JasperDesign design = loadPatchedDesign(jrxmlFile);
-					JasperCompileManager.compileReportToFile(design, jasperFile.getAbsolutePath());
-				}
-				COMPILED_TEMPLATES.add(jasperFile.getAbsolutePath());
-			}
-			catch (JRException exception) {
-				LOGGER.warn("Failed to compile Jasper subreport '{}'", jrxmlFile.getAbsolutePath(), exception);
-			}
-		}
+                        ensureParentDirectory(jasperFile);
+
+                        boolean compiled = false;
+                        try {
+                                JasperDesign design = loadPatchedDesign(jrxmlFile);
+                                JasperCompileManager.compileReportToFile(design, jasperPath);
+                                compiled = true;
+                        }
+                        catch (JRException exception) {
+                                LOGGER.warn("Failed to compile Jasper subreport '{}'", jrxmlFile.getAbsolutePath(), exception);
+                        }
+                        finally {
+                                if (compiled) {
+                                        COMPILED_TEMPLATES.add(jasperPath);
+                                }
+                        }
+                }
 	}
 
 	private void ensureParentDirectory(File jasperFile) {
