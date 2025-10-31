@@ -5,12 +5,16 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -298,17 +302,19 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 		}
 	}
 
-	private String applyTemplatePatches(File jrxmlFile, String content) {
-		if (content == null) {
-			return "";
-		}
+        private String applyTemplatePatches(File jrxmlFile, String content) {
+                if (content == null) {
+                        return "";
+                }
 
-		String result = content;
-		result = normalizeTicketParameterType(result);
+                String result = content;
+                result = normalizeTicketParameterType(result);
+                result = patchTicketDateFormatting(result);
+                result = patchDesgloseExpressions(result);
 
-		if (isPortugueseTemplate(jrxmlFile)) {
-			result = patchAtcudExpressions(result);
-		}
+                if (isPortugueseTemplate(jrxmlFile)) {
+                        result = patchAtcudExpressions(result);
+                }
 
 		if (requiresCodImpPatch(jrxmlFile)) {
 			result = patchCodImpField(result);
@@ -404,16 +410,52 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                 return builder.toString();
         }
 
-	private String patchCodImpField(String content) {
-		if (StringUtils.isBlank(content)) {
-			return content;
-		}
+        private String patchCodImpField(String content) {
+                if (StringUtils.isBlank(content)) {
+                        return content;
+                }
 
-		String patched = COD_IMP_FIELD_PATTERN.matcher(content).replaceAll("<![CDATA[codImpuesto]]>");
-		patched = patched.replace("name=\"codImp\"", "name=\"codImpuesto\"");
-		patched = patched.replace("$F{codImp", "$F{codImpuesto");
-		return patched;
-	}
+                String patched = COD_IMP_FIELD_PATTERN.matcher(content).replaceAll("<![CDATA[codImpuesto]]>");
+                patched = patched.replace("name=\"codImp\"", "name=\"codImpuesto\"");
+                patched = patched.replace("$F{codImp", "$F{codImpuesto");
+                return patched;
+        }
+
+        private String patchTicketDateFormatting(String content) {
+                if (StringUtils.isBlank(content)) {
+                        return content;
+                }
+
+                Matcher matcher = LEGACY_DATE_PATTERN.matcher(content);
+                StringBuffer buffer = new StringBuffer(content.length());
+                boolean updated = false;
+
+                while (matcher.find()) {
+                        String argument = matcher.group(1);
+                        String replacement = "new java.text.SimpleDateFormat(\"dd/MM/yyyy\").format(" +
+                                DATE_NORMALIZER_PREFIX + argument + "))";
+                        matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+                        updated = true;
+                }
+
+                if (updated) {
+                        matcher.appendTail(buffer);
+                        return buffer.toString();
+                }
+
+                return content;
+        }
+
+        private String patchDesgloseExpressions(String content) {
+                if (StringUtils.isBlank(content)) {
+                        return content;
+                }
+
+                String result = DESGLOSE_PATTERN.matcher(content).replaceAll(DESGLOSE_REPLACEMENT);
+                result = DESGLOSE_ZERO_PATTERN.matcher(result)
+                        .replaceAll("java.math.BigDecimal.ZERO.setScale(2, java.math.RoundingMode.HALF_UP)");
+                return result;
+        }
 
         private static final String PROPERTY_REGEX =
                 "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty\\(\"ATCUD\"\\)";
@@ -425,15 +467,80 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
         private static final Pattern TICKET_PARAMETER_PATTERN = Pattern.compile(
                 "(<parameter\\s+name=\\\"ticket\\\"\\s+class=\\\")(.*?)(\\\"\\s*/>)"
         );
-	private static final String NEW_TICKET_PARAMETER_CLASS =
-		"com.comerzzia.omnichannel.model.documents.sales.FT_1_1_Document";
-	private static final Set<String> COD_IMP_PATCH_TEMPLATES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-		"SubInfLineas.jrxml",
-		"SubInfLineas_CA.jrxml",
-		"SubInfLineas_PT.jrxml",
-		"SubInfImportes.jrxml",
-		"SubInfImportes_CA.jrxml",
-		"SubInfImportes_PT.jrxml"
-	)));
-	private static final Pattern COD_IMP_FIELD_PATTERN = Pattern.compile("<!\\[CDATA\\[codImp\\]\\]>");
+        private static final String NEW_TICKET_PARAMETER_CLASS =
+                "com.comerzzia.omnichannel.model.documents.sales.FT_1_1_Document";
+        private static final Pattern LEGACY_DATE_PATTERN = Pattern.compile(
+                "new java\\.text\\.SimpleDateFormat\\(\"dd/MM/yyyy\"\\)\\.format\\(new java\\.text\\.SimpleDateFormat\\(\"yyyy-MM-dd'T'HH:mm:ss\"\\)\\.parse\\(\\((.+?)\\)\\)\\)",
+                Pattern.DOTALL
+        );
+        private static final String DATE_NORMALIZER_PREFIX =
+                "com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.BricodepotDocumentPrintService.normalizeDate(";
+        private static final Pattern DESGLOSE_PATTERN = Pattern.compile(
+                "new java\\.math\\.BigDecimal\\(\\$F\\{desglose2\\}\\.toString\\(\\)\\.replace\\(\",\", \\\".\\\"\\)\\)\\.setScale\\(2, java\\.math\\.RoundingMode\\.HALF_UP\\)"
+        );
+        private static final String DESGLOSE_REPLACEMENT =
+                "com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.BricodepotDocumentPrintService.safeBigDecimal($F{desglose2}).setScale(2, java.math.RoundingMode.HALF_UP)";
+        private static final Pattern DESGLOSE_ZERO_PATTERN = Pattern.compile(
+                "new java\\.math\\.BigDecimal\\(\"0\"\\)\\.setScale\\(2, java\\.math\\.RoundingMode\\.HALF_UP\\)"
+        );
+        private static final Set<String> COD_IMP_PATCH_TEMPLATES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+                "SubInfLineas.jrxml",
+                "SubInfLineas_CA.jrxml",
+                "SubInfLineas_PT.jrxml",
+                "SubInfImportes.jrxml",
+                "SubInfImportes_CA.jrxml",
+                "SubInfImportes_PT.jrxml"
+        )));
+        private static final Pattern COD_IMP_FIELD_PATTERN = Pattern.compile("<!\\[CDATA\\[codImp\\]\\]>");
+
+        public static Date normalizeDate(Object value) {
+                if (value instanceof Date) {
+                        return (Date) value;
+                }
+                if (value == null) {
+                        return new Date();
+                }
+
+                String text = value.toString();
+                for (String pattern : DATE_PATTERNS) {
+                        try {
+                                return new SimpleDateFormat(pattern).parse(text);
+                        }
+                        catch (ParseException exception) {
+                                // try the next pattern
+                        }
+                }
+
+                LOGGER.debug("normalizeDate() - Unable to parse date '{}' with supported patterns", text);
+                return new Date();
+        }
+
+        public static BigDecimal safeBigDecimal(Object value) {
+                if (value == null) {
+                        return BigDecimal.ZERO;
+                }
+                if (value instanceof BigDecimal) {
+                        return (BigDecimal) value;
+                }
+
+                String text = value.toString();
+                if (StringUtils.isBlank(text)) {
+                        return BigDecimal.ZERO;
+                }
+
+                String sanitized = text.trim().replace('*', '0').replace(',', '.');
+                try {
+                        return new BigDecimal(sanitized);
+                }
+                catch (NumberFormatException exception) {
+                        LOGGER.debug("safeBigDecimal() - Unable to parse '{}', defaulting to zero", sanitized, exception);
+                        return BigDecimal.ZERO;
+                }
+        }
+
+        private static final List<String> DATE_PATTERNS = Arrays.asList(
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd HH:mm:ss",
+                "dd/MM/yyyy"
+        );
 }
