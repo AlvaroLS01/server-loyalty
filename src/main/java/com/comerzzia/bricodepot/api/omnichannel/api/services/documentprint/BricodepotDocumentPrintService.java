@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -68,7 +69,8 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 			return;
 		}
 
-		ensurePortugueseTemplateCompatibility(jrxmlFile);
+                normalizeTicketParameterType(jrxmlFile);
+                ensurePortugueseTemplateCompatibility(jrxmlFile);
 		ensureParentDirectory(jasperFile);
 
 		try {
@@ -81,10 +83,52 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 		}
 	}
 
-	private void ensurePortugueseTemplateCompatibility(File jrxmlFile) {
-		if (jrxmlFile == null) {
-			return;
-		}
+        private void normalizeTicketParameterType(File jrxmlFile) {
+                if (jrxmlFile == null || !jrxmlFile.exists()) {
+                        return;
+                }
+
+                String absolutePath = jrxmlFile.getAbsolutePath();
+                if (!absolutePath.contains(File.separator + "informes" + File.separator)) {
+                        return;
+                }
+
+                try {
+                        String content = new String(Files.readAllBytes(jrxmlFile.toPath()), StandardCharsets.UTF_8);
+                        Matcher matcher = TICKET_PARAMETER_PATTERN.matcher(content);
+                        StringBuffer buffer = new StringBuffer(content.length());
+                        boolean updated = false;
+
+                        while (matcher.find()) {
+                                String currentClass = matcher.group(2);
+                                if (!NEW_TICKET_PARAMETER_CLASS.equals(currentClass)) {
+                                        matcher.appendReplacement(buffer,
+                                                matcher.group(1) + Matcher.quoteReplacement(NEW_TICKET_PARAMETER_CLASS)
+                                                        + matcher.group(3));
+                                        updated = true;
+                                }
+                                else {
+                                        matcher.appendReplacement(buffer, matcher.group(0));
+                                }
+                        }
+
+                        if (updated) {
+                                matcher.appendTail(buffer);
+                                Files.write(jrxmlFile.toPath(), buffer.toString().getBytes(StandardCharsets.UTF_8));
+                                LOGGER.debug("normalizeTicketParameterType() - Updated ticket parameter type in '{}'",
+                                        absolutePath);
+                        }
+                }
+                catch (IOException exception) {
+                        LOGGER.warn("normalizeTicketParameterType() - Unable to adjust ticket parameter in '{}'", absolutePath,
+                                exception);
+                }
+        }
+
+        private void ensurePortugueseTemplateCompatibility(File jrxmlFile) {
+                if (jrxmlFile == null) {
+                        return;
+                }
 
 		String name = jrxmlFile.getName();
 		if (!"facturaA4_PT.jrxml".equalsIgnoreCase(name) && !"facturaDevolucionA4_PT.jrxml".equalsIgnoreCase(name)) {
@@ -119,8 +163,8 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 			        "name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>");
 		}
 
-		result = PROPERTY_VALUE_PATTERN.matcher(result).replaceAll("$P{fiscalData_ACTUD}");
-		result = PROPERTY_PATTERN.matcher(result).replaceAll("$P{fiscalData_ACTUD}");
+                result = PROPERTY_VALUE_PATTERN.matcher(result).replaceAll(FISCAL_PARAM_REPLACEMENT);
+                result = PROPERTY_PATTERN.matcher(result).replaceAll(FISCAL_PARAM_REPLACEMENT);
 
 		return result;
 	}
@@ -155,14 +199,16 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 			return;
 		}
 
-		for (File jrxmlFile : jrxmlFiles) {
-			if (primaryJrxml != null && primaryJrxml.equals(jrxmlFile)) {
-				continue;
-			}
-			File jasperFile = toJasperFile(jrxmlFile);
-			if (jasperFile == null) {
-				continue;
-			}
+                for (File jrxmlFile : jrxmlFiles) {
+                        if (primaryJrxml != null && primaryJrxml.equals(jrxmlFile)) {
+                                continue;
+                        }
+                        normalizeTicketParameterType(jrxmlFile);
+                        ensurePortugueseTemplateCompatibility(jrxmlFile);
+                        File jasperFile = toJasperFile(jrxmlFile);
+                        if (jasperFile == null) {
+                                continue;
+                        }
 			ensureParentDirectory(jasperFile);
 
 			try {
@@ -324,7 +370,13 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 		}
 	}
 
-	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\.getProperty\\(\\\"ATCUD\\\"\\)");
-	private static final Pattern PROPERTY_VALUE_PATTERN = Pattern
-	        .compile("\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\.getProperty(?:Value)?\\(\\\"ATCUD\\\"\\)(?:\\.getValue\\(\\))?");
+        private static final Pattern PROPERTY_PATTERN = Pattern.compile(
+                "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty\\(\\\"ATCUD\\\"\\)");
+        private static final Pattern PROPERTY_VALUE_PATTERN = Pattern.compile(
+                "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty(?:Value)?\\(\\\"ATCUD\\\"\\)(?:\\s*\\.getValue\\(\\))?");
+        private static final String FISCAL_PARAM_REPLACEMENT = Matcher.quoteReplacement("$P{fiscalData_ACTUD}");
+        private static final Pattern TICKET_PARAMETER_PATTERN = Pattern.compile(
+                "(<parameter\\s+name=\\\"ticket\\\"\\s+class=\\\")(.*?)(\\\"\\s*/>)");
+        private static final String NEW_TICKET_PARAMETER_CLASS =
+                "com.comerzzia.omnichannel.model.documents.sales.FT_1_1_Document";
 }
