@@ -382,8 +382,7 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                         return content;
                 }
 
-                int insertIndex = content.indexOf('
-', markerIndex);
+                int insertIndex = content.indexOf('\n', markerIndex);
                 if (insertIndex < 0) {
                         insertIndex = markerIndex + marker.length();
                 }
@@ -408,10 +407,10 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 	}
 
         private static final Pattern PROPERTY_PATTERN = Pattern.compile(
-                "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty\\(\\\\"ATCUD\\\\"\\)"
+                "\$P\{ticket\}\.getCabecera\(\)\.getFiscalData\(\)\s*\.getProperty\(\"ATCUD\"\)"
         );
         private static final Pattern PROPERTY_VALUE_PATTERN = Pattern.compile(
-                "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty(?:Value)?\\(\\\\"ATCUD\\\\"\\)(?:\\s*\\.getValue\\(\\))?"
+                "\$P\{ticket\}\.getCabecera\(\)\.getFiscalData\(\)\s*\.getProperty(?:Value)?\(\"ATCUD\"\)(?:\s*\.getValue\(\))?"
         );
         private static final String FISCAL_PARAM_REPLACEMENT = Matcher.quoteReplacement("$P{fiscalData_ACTUD}");
         private static final Pattern TICKET_PARAMETER_PATTERN = Pattern.compile(
