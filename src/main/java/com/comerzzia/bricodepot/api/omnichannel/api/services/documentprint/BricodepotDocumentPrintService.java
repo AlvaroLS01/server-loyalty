@@ -1,17 +1,27 @@
 package com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -26,6 +36,8 @@ import com.comerzzia.omnichannel.service.documentprint.jasper.JasperPrintService
 
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.design.JasperDesign;
+import net.sf.jasperreports.engine.xml.JRXmlLoader;
 
 @Service
 @Primary
@@ -68,11 +80,11 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 			return;
 		}
 
-		ensurePortugueseTemplateCompatibility(jrxmlFile);
-		ensureParentDirectory(jasperFile);
+                ensureParentDirectory(jasperFile);
 
 		try {
-			JasperCompileManager.compileReportToFile(jrxmlFile.getAbsolutePath(), jasperFile.getAbsolutePath());
+			JasperDesign design = loadPatchedDesign(jrxmlFile);
+			JasperCompileManager.compileReportToFile(design, jasperFile.getAbsolutePath());
 			COMPILED_TEMPLATES.add(absolutePath);
 			compileSiblingTemplates(jrxmlFile.getParentFile(), jrxmlFile);
 		}
@@ -81,69 +93,6 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 		}
 	}
 
-	private void ensurePortugueseTemplateCompatibility(File jrxmlFile) {
-		if (jrxmlFile == null) {
-			return;
-		}
-
-		String name = jrxmlFile.getName();
-		if (!"facturaA4_PT.jrxml".equalsIgnoreCase(name) && !"facturaDevolucionA4_PT.jrxml".equalsIgnoreCase(name)) {
-			return;
-		}
-
-		try {
-			String content = new String(Files.readAllBytes(jrxmlFile.toPath()), StandardCharsets.UTF_8);
-			String updatedContent = patchAtcudExpressions(content);
-
-			if (!updatedContent.equals(content)) {
-				Files.write(jrxmlFile.toPath(), updatedContent.getBytes(StandardCharsets.UTF_8));
-				LOGGER.debug("ensurePortugueseTemplateCompatibility() - Patched fiscal data expressions in '{}'", jrxmlFile.getAbsolutePath());
-			}
-		}
-		catch (IOException exception) {
-			LOGGER.warn("ensurePortugueseTemplateCompatibility() - Unable to adjust template '{}'", jrxmlFile.getAbsolutePath(), exception);
-		}
-	}
-
-	private String patchAtcudExpressions(String content) {
-		if (content == null) {
-			return "";
-		}
-
-		String result = content;
-		if (!result.contains("name=\"fiscalData_ACTUD\"")) {
-			result = injectFiscalParameters(result);
-		}
-		else if (!result.contains("name=\"fiscalData_QR\"")) {
-			result = result.replace("name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>",
-			        "name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>");
-		}
-
-		result = PROPERTY_VALUE_PATTERN.matcher(result).replaceAll("$P{fiscalData_ACTUD}");
-		result = PROPERTY_PATTERN.matcher(result).replaceAll("$P{fiscalData_ACTUD}");
-
-		return result;
-	}
-
-	private String injectFiscalParameters(String content) {
-		String marker = "<parameter name=\"ticket\"";
-		int markerIndex = content.indexOf(marker);
-		if (markerIndex < 0) {
-			return content;
-		}
-
-		int insertIndex = content.indexOf('\n', markerIndex);
-		if (insertIndex < 0) {
-			insertIndex = markerIndex + marker.length();
-		}
-
-		StringBuilder builder = new StringBuilder(content.length() + 160);
-		builder.append(content, 0, insertIndex + 1);
-		builder.append("        <parameter name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n");
-		builder.append("        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>\n");
-		builder.append(content.substring(insertIndex + 1));
-		return builder.toString();
-	}
 
 	private void compileSiblingTemplates(File directory, File primaryJrxml) {
 		if (directory == null || !directory.isDirectory()) {
@@ -155,26 +104,36 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 			return;
 		}
 
-		for (File jrxmlFile : jrxmlFiles) {
-			if (primaryJrxml != null && primaryJrxml.equals(jrxmlFile)) {
-				continue;
-			}
-			File jasperFile = toJasperFile(jrxmlFile);
-			if (jasperFile == null) {
-				continue;
-			}
-			ensureParentDirectory(jasperFile);
+                for (File jrxmlFile : jrxmlFiles) {
+                        if (primaryJrxml != null && primaryJrxml.equals(jrxmlFile)) {
+                                continue;
+                        }
+                        File jasperFile = toJasperFile(jrxmlFile);
+                        if (jasperFile == null) {
+                                continue;
+                        }
+                        String jasperPath = jasperFile.getAbsolutePath();
+                        if (COMPILED_TEMPLATES.contains(jasperPath)) {
+                                continue;
+                        }
 
-			try {
-				if (!jasperFile.exists() || jrxmlFile.lastModified() >= jasperFile.lastModified()) {
-					JasperCompileManager.compileReportToFile(jrxmlFile.getAbsolutePath(), jasperFile.getAbsolutePath());
-				}
-				COMPILED_TEMPLATES.add(jasperFile.getAbsolutePath());
-			}
-			catch (JRException exception) {
-				LOGGER.warn("Failed to compile Jasper subreport '{}'", jrxmlFile.getAbsolutePath(), exception);
-			}
-		}
+                        ensureParentDirectory(jasperFile);
+
+                        boolean compiled = false;
+                        try {
+                                JasperDesign design = loadPatchedDesign(jrxmlFile);
+                                JasperCompileManager.compileReportToFile(design, jasperPath);
+                                compiled = true;
+                        }
+                        catch (JRException exception) {
+                                LOGGER.warn("Failed to compile Jasper subreport '{}'", jrxmlFile.getAbsolutePath(), exception);
+                        }
+                        finally {
+                                if (compiled) {
+                                        COMPILED_TEMPLATES.add(jasperPath);
+                                }
+                        }
+                }
 	}
 
 	private void ensureParentDirectory(File jasperFile) {
@@ -324,7 +283,265 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 		}
 	}
 
-	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\.getProperty\\(\\\"ATCUD\\\"\\)");
-	private static final Pattern PROPERTY_VALUE_PATTERN = Pattern
-	        .compile("\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\.getProperty(?:Value)?\\(\\\"ATCUD\\\"\\)(?:\\.getValue\\(\\))?");
+	private JasperDesign loadPatchedDesign(File jrxmlFile) throws JRException {
+		if (jrxmlFile == null) {
+			throw new JRException("JRXML file is null");
+		}
+
+		try {
+			byte[] bytes = Files.readAllBytes(jrxmlFile.toPath());
+			String original = new String(bytes, StandardCharsets.UTF_8);
+			String patched = applyTemplatePatches(jrxmlFile, original);
+			try (InputStream inputStream = new ByteArrayInputStream(patched.getBytes(StandardCharsets.UTF_8))) {
+				return JRXmlLoader.load(inputStream);
+			}
+		}
+		catch (IOException exception) {
+			LOGGER.warn("loadPatchedDesign() - Unable to read template '{}' while compiling", jrxmlFile.getAbsolutePath(), exception);
+			return JRXmlLoader.load(jrxmlFile);
+		}
+	}
+
+        private String applyTemplatePatches(File jrxmlFile, String content) {
+                if (content == null) {
+                        return "";
+                }
+
+                String result = content;
+                result = normalizeTicketParameterType(result);
+                result = patchTicketDateFormatting(result);
+                result = patchDesgloseExpressions(result);
+
+                if (isPortugueseTemplate(jrxmlFile)) {
+                        result = patchAtcudExpressions(result);
+                }
+
+		if (requiresCodImpPatch(jrxmlFile)) {
+			result = patchCodImpField(result);
+		}
+
+		return result;
+	}
+
+        private boolean isPortugueseTemplate(File jrxmlFile) {
+                if (jrxmlFile == null) {
+                        return false;
+                }
+                String name = jrxmlFile.getName();
+                return "facturaA4_PT.jrxml".equalsIgnoreCase(name) || "facturaDevolucionA4_PT.jrxml".equalsIgnoreCase(name);
+        }
+
+        private boolean requiresCodImpPatch(File jrxmlFile) {
+                if (jrxmlFile == null) {
+                        return false;
+                }
+                return COD_IMP_PATCH_TEMPLATES.contains(jrxmlFile.getName());
+        }
+
+	private String normalizeTicketParameterType(String content) {
+		if (StringUtils.isBlank(content)) {
+			return content;
+		}
+
+		Matcher matcher = TICKET_PARAMETER_PATTERN.matcher(content);
+		StringBuffer buffer = new StringBuffer(content.length());
+		boolean updated = false;
+
+                while (matcher.find()) {
+                        String currentClass = matcher.group(2);
+                        if (!NEW_TICKET_PARAMETER_CLASS.equals(currentClass)) {
+                                matcher.appendReplacement(buffer, matcher.group(1)
+                                        + Matcher.quoteReplacement(NEW_TICKET_PARAMETER_CLASS) + matcher.group(3));
+                                updated = true;
+                        }
+                        else {
+                                matcher.appendReplacement(buffer, matcher.group(0));
+                        }
+                }
+
+                if (updated) {
+                        matcher.appendTail(buffer);
+                        return buffer.toString();
+                }
+
+                return content;
+        }
+
+	private String patchAtcudExpressions(String content) {
+		if (StringUtils.isBlank(content)) {
+			return content;
+		}
+
+		String result = content;
+                if (!result.contains("name=\"fiscalData_ACTUD\"")) {
+                        result = injectFiscalParameters(result);
+                }
+                else if (!result.contains("name=\"fiscalData_QR\"")) {
+                        result = result.replace("name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>",
+                                "name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>");
+                }
+
+                result = PROPERTY_VALUE_PATTERN.matcher(result).replaceAll(FISCAL_PARAM_REPLACEMENT);
+                result = PROPERTY_PATTERN.matcher(result).replaceAll(FISCAL_PARAM_REPLACEMENT);
+                return result;
+        }
+
+	private String injectFiscalParameters(String content) {
+		if (StringUtils.isBlank(content)) {
+			return content;
+		}
+
+		String marker = "<parameter name=\"ticket\"";
+                int markerIndex = content.indexOf(marker);
+                if (markerIndex < 0) {
+                        return content;
+                }
+
+                int insertIndex = content.indexOf('\n', markerIndex);
+                if (insertIndex < 0) {
+                        insertIndex = markerIndex + marker.length();
+                }
+
+                StringBuilder builder = new StringBuilder(content.length() + 160);
+                builder.append(content, 0, insertIndex + 1);
+                builder.append("        <parameter name=\"fiscalData_ACTUD\" class=\"java.lang.String\"/>\n");
+                builder.append("        <parameter name=\"fiscalData_QR\" class=\"java.lang.String\"/>\n");
+                builder.append(content.substring(insertIndex + 1));
+                return builder.toString();
+        }
+
+        private String patchCodImpField(String content) {
+                if (StringUtils.isBlank(content)) {
+                        return content;
+                }
+
+                String patched = COD_IMP_FIELD_PATTERN.matcher(content).replaceAll("<![CDATA[codImpuesto]]>");
+                patched = patched.replace("name=\"codImp\"", "name=\"codImpuesto\"");
+                patched = patched.replace("$F{codImp", "$F{codImpuesto");
+                return patched;
+        }
+
+        private String patchTicketDateFormatting(String content) {
+                if (StringUtils.isBlank(content)) {
+                        return content;
+                }
+
+                Matcher matcher = LEGACY_DATE_PATTERN.matcher(content);
+                StringBuffer buffer = new StringBuffer(content.length());
+                boolean updated = false;
+
+                while (matcher.find()) {
+                        String argument = matcher.group(1);
+                        String replacement = "new java.text.SimpleDateFormat(\"dd/MM/yyyy\").format(" +
+                                DATE_NORMALIZER_PREFIX + argument + "))";
+                        matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+                        updated = true;
+                }
+
+                if (updated) {
+                        matcher.appendTail(buffer);
+                        return buffer.toString();
+                }
+
+                return content;
+        }
+
+        private String patchDesgloseExpressions(String content) {
+                if (StringUtils.isBlank(content)) {
+                        return content;
+                }
+
+                String result = DESGLOSE_PATTERN.matcher(content)
+                        .replaceAll(Matcher.quoteReplacement(DESGLOSE_REPLACEMENT));
+                result = DESGLOSE_ZERO_PATTERN.matcher(result)
+                        .replaceAll("java.math.BigDecimal.ZERO.setScale(2, java.math.RoundingMode.HALF_UP)");
+                return result;
+        }
+
+        private static final String PROPERTY_REGEX =
+                "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty\\(\"ATCUD\"\\)";
+        private static final Pattern PROPERTY_PATTERN = Pattern.compile(PROPERTY_REGEX);
+        private static final String PROPERTY_VALUE_REGEX =
+                "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty(?:Value)?\\(\"ATCUD\"\\)(?:\\s*\\.getValue\\(\\))?";
+        private static final Pattern PROPERTY_VALUE_PATTERN = Pattern.compile(PROPERTY_VALUE_REGEX);
+        private static final String FISCAL_PARAM_REPLACEMENT = Matcher.quoteReplacement("$P{fiscalData_ACTUD}");
+        private static final Pattern TICKET_PARAMETER_PATTERN = Pattern.compile(
+                "(<parameter\\s+name=\\\"ticket\\\"\\s+class=\\\")(.*?)(\\\"\\s*/>)"
+        );
+        private static final String NEW_TICKET_PARAMETER_CLASS =
+                "com.comerzzia.omnichannel.model.documents.sales.FT_1_1_Document";
+        private static final Pattern LEGACY_DATE_PATTERN = Pattern.compile(
+                "new java\\.text\\.SimpleDateFormat\\(\"dd/MM/yyyy\"\\)\\.format\\(new java\\.text\\.SimpleDateFormat\\(\"yyyy-MM-dd'T'HH:mm:ss\"\\)\\.parse\\(\\((.+?)\\)\\)\\)",
+                Pattern.DOTALL
+        );
+        private static final String DATE_NORMALIZER_PREFIX =
+                "com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.BricodepotDocumentPrintService.normalizeDate(";
+        private static final Pattern DESGLOSE_PATTERN = Pattern.compile(
+                "new java\\.math\\.BigDecimal\\(\\$F\\{desglose2\\}\\.toString\\(\\)\\.replace\\(\",\", \\\".\\\"\\)\\)\\.setScale\\(2, java\\.math\\.RoundingMode\\.HALF_UP\\)"
+        );
+        private static final String DESGLOSE_REPLACEMENT =
+                "com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.BricodepotDocumentPrintService.safeBigDecimal($F{desglose2}).setScale(2, java.math.RoundingMode.HALF_UP)";
+        private static final Pattern DESGLOSE_ZERO_PATTERN = Pattern.compile(
+                "new java\\.math\\.BigDecimal\\(\"0\"\\)\\.setScale\\(2, java\\.math\\.RoundingMode\\.HALF_UP\\)"
+        );
+        private static final Set<String> COD_IMP_PATCH_TEMPLATES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+                "SubInfLineas.jrxml",
+                "SubInfLineas_CA.jrxml",
+                "SubInfLineas_PT.jrxml",
+                "SubInfImportes.jrxml",
+                "SubInfImportes_CA.jrxml",
+                "SubInfImportes_PT.jrxml"
+        )));
+        private static final Pattern COD_IMP_FIELD_PATTERN = Pattern.compile("<!\\[CDATA\\[codImp\\]\\]>");
+
+        public static Date normalizeDate(Object value) {
+                if (value instanceof Date) {
+                        return (Date) value;
+                }
+                if (value == null) {
+                        return new Date();
+                }
+
+                String text = value.toString();
+                for (String pattern : DATE_PATTERNS) {
+                        try {
+                                return new SimpleDateFormat(pattern).parse(text);
+                        }
+                        catch (ParseException exception) {
+                                // try the next pattern
+                        }
+                }
+
+                LOGGER.debug("normalizeDate() - Unable to parse date '{}' with supported patterns", text);
+                return new Date();
+        }
+
+        public static BigDecimal safeBigDecimal(Object value) {
+                if (value == null) {
+                        return BigDecimal.ZERO;
+                }
+                if (value instanceof BigDecimal) {
+                        return (BigDecimal) value;
+                }
+
+                String text = value.toString();
+                if (StringUtils.isBlank(text)) {
+                        return BigDecimal.ZERO;
+                }
+
+                String sanitized = text.trim().replace('*', '0').replace(',', '.');
+                try {
+                        return new BigDecimal(sanitized);
+                }
+                catch (NumberFormatException exception) {
+                        LOGGER.debug("safeBigDecimal() - Unable to parse '{}', defaulting to zero", sanitized, exception);
+                        return BigDecimal.ZERO;
+                }
+        }
+
+        private static final List<String> DATE_PATTERNS = Arrays.asList(
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd HH:mm:ss",
+                "dd/MM/yyyy"
+        );
 }
