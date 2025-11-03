@@ -6,8 +6,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -27,11 +29,14 @@ import org.w3c.dom.NodeList;
 
 import com.comerzzia.api.core.service.exception.ApiException;
 import com.comerzzia.bricodepot.api.omnichannel.api.domain.salesdocument.BricodepotPrintableDocument;
+import com.comerzzia.bricodepot.api.omnichannel.api.domain.salesdocument.PagoTicketWithMedioPago;
 import com.comerzzia.core.servicios.sesion.IDatosSesion;
 import com.comerzzia.omnichannel.domain.dto.saledoc.PrintDocumentDTO;
 import com.comerzzia.omnichannel.domain.entity.document.DocumentEntity;
 import com.comerzzia.omnichannel.service.document.DocumentService;
 import com.comerzzia.omnichannel.service.salesdocument.SaleDocumentService;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.pagos.PagoTicket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.zxing.BarcodeFormat;
@@ -70,6 +75,7 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 		LOGGER.debug("printDocument() - Generating sales document '{}' with mime type '{}'", documentUid, printRequest.getMimeType());
 
                 populateFiscalData(datosSesion, documentUid, printRequest);
+                normalizeTicketPayments(printRequest);
                 applyDuplicateFlag(printRequest);
 
                 try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -126,13 +132,82 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
                 }
                 catch (Exception exception) {
                         LOGGER.warn("populateFiscalData() - Unable to extract fiscal data for document '{}'", documentUid, exception);
+        }
+    }
+
+        private void normalizeTicketPayments(PrintDocumentDTO printRequest) {
+                if (printRequest == null) {
+                        return;
+                }
+
+                Map<String, Object> customParams = printRequest.getCustomParams();
+                if (customParams == null || customParams.isEmpty()) {
+                        return;
+                }
+
+                Object ticketParam = customParams.get("ticket");
+                if (!(ticketParam instanceof TicketVentaAbono)) {
+                        return;
+                }
+
+                TicketVentaAbono ticket = (TicketVentaAbono) ticketParam;
+                List<PagoTicket> pagos = ticket.getPagos();
+                List<PagoTicket> adaptedPayments = adaptPayments(pagos);
+                if (pagos != adaptedPayments) {
+                        ticket.setPagos(adaptedPayments);
+                }
+
+                if (ticket.getCabecera() != null && ticket.getCabecera().getTotales() != null) {
+                        ticket.getCabecera().getTotales().setCambio(adaptPago(ticket.getCabecera().getTotales().getCambio()));
                 }
         }
 
-	private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
-		if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
-			return;
-		}
+        private List<PagoTicket> adaptPayments(List<PagoTicket> pagos) {
+                if (pagos == null || pagos.isEmpty()) {
+                        return pagos;
+                }
+
+                boolean alreadyAdapted = true;
+                for (PagoTicket pago : pagos) {
+                        if (!(pago instanceof PagoTicketWithMedioPago)) {
+                                alreadyAdapted = false;
+                                break;
+                        }
+                }
+
+                List<PagoTicket> result = alreadyAdapted ? pagos : new ArrayList<>(pagos.size());
+                for (PagoTicket pago : pagos) {
+                        PagoTicket adapted = adaptPago(pago);
+                        if (!alreadyAdapted) {
+                                result.add(adapted);
+                        }
+                }
+
+                return result;
+        }
+
+        private PagoTicket adaptPago(PagoTicket pago) {
+                if (pago == null) {
+                        return null;
+                }
+
+                if (pago instanceof PagoTicketWithMedioPago) {
+                        refreshMedioPagoDescriptor((PagoTicketWithMedioPago) pago);
+                        return pago;
+                }
+
+                return new PagoTicketWithMedioPago(pago);
+        }
+
+        private void refreshMedioPagoDescriptor(PagoTicketWithMedioPago pago) {
+                pago.getMedioPago().setCodMedioPago(pago.getCodMedioPago());
+                pago.getMedioPago().setDesMedioPago(pago.getDesMedioPago());
+        }
+
+        private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
+                if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
+                        return;
+                }
 
 		Map<String, Object> customParams = printRequest.getCustomParams();
 		if (!customParams.containsKey(PARAM_DUPLICATE_FLAG)) {
