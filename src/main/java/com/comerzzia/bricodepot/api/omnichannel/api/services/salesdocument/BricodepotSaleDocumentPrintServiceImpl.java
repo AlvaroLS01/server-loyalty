@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -31,8 +30,6 @@ import com.comerzzia.bricodepot.api.omnichannel.api.domain.salesdocument.Bricode
 import com.comerzzia.core.servicios.sesion.IDatosSesion;
 import com.comerzzia.omnichannel.domain.dto.saledoc.PrintDocumentDTO;
 import com.comerzzia.omnichannel.domain.entity.document.DocumentEntity;
-import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
-import com.comerzzia.omnichannel.model.documents.sales.ticket.pagos.PagoTicket;
 import com.comerzzia.omnichannel.service.document.DocumentService;
 import com.comerzzia.omnichannel.service.salesdocument.SaleDocumentService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -73,10 +70,9 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 		LOGGER.debug("printDocument() - Generating sales document '{}' with mime type '{}'", documentUid, printRequest.getMimeType());
 
                 populateFiscalData(datosSesion, documentUid, printRequest);
-                normalizePaymentData(printRequest);
-		applyDuplicateFlag(printRequest);
+                applyDuplicateFlag(printRequest);
 
-		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 			saleDocumentService.printDocument(outputStream, datosSesion, documentUid, printRequest);
 
 			String outputDocumentName = printRequest.getOutputDocumentName();
@@ -130,29 +126,6 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
                 }
                 catch (Exception exception) {
                         LOGGER.warn("populateFiscalData() - Unable to extract fiscal data for document '{}'", documentUid, exception);
-                }
-        }
-
-        private void normalizePaymentData(PrintDocumentDTO printRequest) {
-                if (printRequest == null) {
-                        return;
-                }
-
-                Map<String, Object> customParams = printRequest.getCustomParams();
-                if (customParams == null || customParams.isEmpty()) {
-                        return;
-                }
-
-                Object ticketCandidate = customParams.get("ticket");
-                if (!(ticketCandidate instanceof TicketVentaAbono)) {
-                        return;
-                }
-
-                TicketVentaAbono ticket = (TicketVentaAbono) ticketCandidate;
-                List<PagoTicket> pagos = ticket.getPagos();
-                List<PagoTicket> normalized = PagoTicketPrintAdapter.wrapList(pagos);
-                if (normalized != null && normalized != pagos) {
-                        ticket.setPagos(normalized);
                 }
         }
 
