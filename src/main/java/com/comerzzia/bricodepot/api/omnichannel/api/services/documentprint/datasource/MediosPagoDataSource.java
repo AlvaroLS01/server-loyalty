@@ -3,6 +3,7 @@ package com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.data
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Map;
@@ -21,6 +22,7 @@ public class MediosPagoDataSource extends JRBeanCollectionDataSource {
         private static final Logger LOGGER = LoggerFactory.getLogger(MediosPagoDataSource.class);
         private static final String MEDIO_PAGO_PREFIX = "medioPago";
         private static final Map<Class<?>, Map<String, Method>> READ_METHOD_CACHE = new ConcurrentHashMap<>();
+        private static final Field CURRENT_BEAN_FIELD = resolveCurrentBeanField();
 
         public MediosPagoDataSource(Collection<?> beanCollection) {
                 super(beanCollection, true);
@@ -72,6 +74,20 @@ public class MediosPagoDataSource extends JRBeanCollectionDataSource {
                 return resolveNestedProperty(medioPago, remainder);
         }
 
+        private Object getCurrentBean() {
+                if (CURRENT_BEAN_FIELD == null) {
+                        return null;
+                }
+
+                try {
+                        return CURRENT_BEAN_FIELD.get(this);
+                }
+                catch (IllegalAccessException exception) {
+                        LOGGER.debug("getCurrentBean() - Unable to access current bean", exception);
+                        return null;
+                }
+        }
+
         private Object resolveNestedProperty(Object target, String path) {
                 if (target == null || StringUtils.isBlank(path)) {
                         return null;
@@ -109,6 +125,18 @@ public class MediosPagoDataSource extends JRBeanCollectionDataSource {
         private Method findReadMethod(Class<?> type, String property) {
                 Map<String, Method> methods = READ_METHOD_CACHE.computeIfAbsent(type, MediosPagoDataSource::inspectType);
                 return methods.get(property);
+        }
+
+        private static Field resolveCurrentBeanField() {
+                try {
+                        Field field = JRBeanCollectionDataSource.class.getDeclaredField("currentBean");
+                        field.setAccessible(true);
+                        return field;
+                }
+                catch (NoSuchFieldException exception) {
+                        LOGGER.error("resolveCurrentBeanField() - JasperReports JRBeanCollectionDataSource no longer exposes 'currentBean'", exception);
+                        return null;
+                }
         }
 
         private static Map<String, Method> inspectType(Class<?> type) {
