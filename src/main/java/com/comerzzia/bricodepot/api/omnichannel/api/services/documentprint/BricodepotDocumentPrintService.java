@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -28,10 +29,13 @@ import java.util.stream.Stream;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+import com.comerzzia.bricodepot.backoffice.services.ventas.facturas.CargarFacturaA4Servicio;
 import com.comerzzia.core.util.config.AppInfo;
+import com.comerzzia.omnichannel.domain.dto.saledoc.PrintDocumentDTO;
 import com.comerzzia.omnichannel.service.documentprint.jasper.JasperPrintServiceImpl;
 
 import net.sf.jasperreports.engine.JRException;
@@ -43,9 +47,45 @@ import net.sf.jasperreports.engine.xml.JRXmlLoader;
 @Primary
 public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(BricodepotDocumentPrintService.class);
-	private static final Set<String> COMPILED_TEMPLATES = ConcurrentHashMap.newKeySet();
-	private static final ConcurrentMap<String, File> TEMPLATE_RESOLUTION_CACHE = new ConcurrentHashMap<>();
+        private static final Logger LOGGER = LoggerFactory.getLogger(BricodepotDocumentPrintService.class);
+        private static final Set<String> COMPILED_TEMPLATES = ConcurrentHashMap.newKeySet();
+        private static final ConcurrentMap<String, File> TEMPLATE_RESOLUTION_CACHE = new ConcurrentHashMap<>();
+
+        private final CargarFacturaA4Servicio cargarFacturaA4Servicio;
+
+        @Autowired
+        public BricodepotDocumentPrintService(CargarFacturaA4Servicio cargarFacturaA4Servicio) {
+                this.cargarFacturaA4Servicio = cargarFacturaA4Servicio;
+        }
+
+        @Override
+        protected Map<String, Object> generateDocParameters(PrintDocumentDTO printRequest) {
+                enrichTicketPayments(printRequest);
+                return super.generateDocParameters(printRequest);
+        }
+
+        private void enrichTicketPayments(PrintDocumentDTO printRequest) {
+                if (cargarFacturaA4Servicio == null || printRequest == null) {
+                        return;
+                }
+
+                Map<String, Object> customParams = printRequest.getCustomParams();
+                if (customParams == null || customParams.isEmpty()) {
+                        return;
+                }
+
+                Object ticket = customParams.get("ticket");
+                if (ticket == null) {
+                        return;
+                }
+
+                try {
+                        cargarFacturaA4Servicio.generarMediosPago(ticket);
+                }
+                catch (Exception exception) {
+                        LOGGER.warn("enrichTicketPayments() - Unable to enrich ticket payments", exception);
+                }
+        }
 
 	@Override
 	protected File getTemplateLocaleFile(String template, String localeId) {
@@ -311,7 +351,7 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                 result = normalizeTicketParameterType(result);
                 result = patchTicketDateFormatting(result);
                 result = patchDesgloseExpressions(result);
-
+                
                 if (isPortugueseTemplate(jrxmlFile)) {
                         result = patchAtcudExpressions(result);
                 }
