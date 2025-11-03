@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -30,6 +31,8 @@ import com.comerzzia.bricodepot.api.omnichannel.api.domain.salesdocument.Bricode
 import com.comerzzia.core.servicios.sesion.IDatosSesion;
 import com.comerzzia.omnichannel.domain.dto.saledoc.PrintDocumentDTO;
 import com.comerzzia.omnichannel.domain.entity.document.DocumentEntity;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.TicketVentaAbono;
+import com.comerzzia.omnichannel.model.documents.sales.ticket.pagos.PagoTicket;
 import com.comerzzia.omnichannel.service.document.DocumentService;
 import com.comerzzia.omnichannel.service.salesdocument.SaleDocumentService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -69,7 +72,8 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 	public BricodepotPrintableDocument printDocument(IDatosSesion datosSesion, String documentUid, PrintDocumentDTO printRequest) throws ApiException {
 		LOGGER.debug("printDocument() - Generating sales document '{}' with mime type '{}'", documentUid, printRequest.getMimeType());
 
-		populateFiscalData(datosSesion, documentUid, printRequest);
+                populateFiscalData(datosSesion, documentUid, printRequest);
+                normalizePaymentData(printRequest);
 		applyDuplicateFlag(printRequest);
 
 		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -91,19 +95,18 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 		}
 	}
 
-	private void populateFiscalData(IDatosSesion datosSesion, String documentUid, PrintDocumentDTO printRequest) {
-		if (printRequest == null) {
-			return;
-		}
+        private void populateFiscalData(IDatosSesion datosSesion, String documentUid, PrintDocumentDTO printRequest) {
+                if (printRequest == null) {
+                        return;
+                }
 
-		try {
-			DocumentEntity documentEntity = documentService.findById(datosSesion, documentUid);
-			if (documentEntity == null) {
-				LOGGER.debug("populateFiscalData() - Document '{}' not found, skipping fiscal data extraction", documentUid);
-				return;
-			}
-
-			byte[] content = documentEntity.getDocumentContent();
+                try {
+                        DocumentEntity documentEntity = documentService.findById(datosSesion, documentUid);
+                        if (documentEntity == null) {
+                                LOGGER.debug("populateFiscalData() - Document '{}' not found, skipping fiscal data extraction", documentUid);
+                                return;
+                        }
+                        byte[] content = documentEntity.getDocumentContent();
 			if (content == null || content.length == 0) {
 				LOGGER.debug("populateFiscalData() - Document '{}' has no content, skipping fiscal data extraction", documentUid);
 				return;
@@ -124,11 +127,34 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 					customParams.put(PARAM_QR_PORTUGAL, qrStream);
 				}
 			}
-		}
-		catch (Exception exception) {
-			LOGGER.warn("populateFiscalData() - Unable to extract fiscal data for document '{}'", documentUid, exception);
-		}
-	}
+                }
+                catch (Exception exception) {
+                        LOGGER.warn("populateFiscalData() - Unable to extract fiscal data for document '{}'", documentUid, exception);
+                }
+        }
+
+        private void normalizePaymentData(PrintDocumentDTO printRequest) {
+                if (printRequest == null) {
+                        return;
+                }
+
+                Map<String, Object> customParams = printRequest.getCustomParams();
+                if (customParams == null || customParams.isEmpty()) {
+                        return;
+                }
+
+                Object ticketCandidate = customParams.get("ticket");
+                if (!(ticketCandidate instanceof TicketVentaAbono)) {
+                        return;
+                }
+
+                TicketVentaAbono ticket = (TicketVentaAbono) ticketCandidate;
+                List<PagoTicket> pagos = ticket.getPagos();
+                List<PagoTicket> normalized = PagoTicketPrintAdapter.wrapList(pagos);
+                if (normalized != null && normalized != pagos) {
+                        ticket.setPagos(normalized);
+                }
+        }
 
 	private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
 		if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
