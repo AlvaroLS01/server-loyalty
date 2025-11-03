@@ -311,7 +311,7 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                 result = normalizeTicketParameterType(result);
                 result = patchTicketDateFormatting(result);
                 result = patchDesgloseExpressions(result);
-                
+
                 if (isPortugueseTemplate(jrxmlFile)) {
                         result = patchAtcudExpressions(result);
                 }

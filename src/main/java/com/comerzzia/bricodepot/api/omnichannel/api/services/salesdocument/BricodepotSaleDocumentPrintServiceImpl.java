@@ -27,7 +27,6 @@ import org.w3c.dom.NodeList;
 
 import com.comerzzia.api.core.service.exception.ApiException;
 import com.comerzzia.bricodepot.api.omnichannel.api.domain.salesdocument.BricodepotPrintableDocument;
-import com.comerzzia.bricodepot.backoffice.services.ventas.facturas.CargarFacturaA4Servicio;
 import com.comerzzia.core.servicios.sesion.IDatosSesion;
 import com.comerzzia.omnichannel.domain.dto.saledoc.PrintDocumentDTO;
 import com.comerzzia.omnichannel.domain.entity.document.DocumentEntity;
@@ -57,25 +56,21 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 	private static final String QR = "QR";
 	private static final int QR_IMAGE_SIZE = 200;
 
-        private final SaleDocumentService saleDocumentService;
-        private final DocumentService documentService;
-        private final CargarFacturaA4Servicio cargarFacturaA4Servicio;
+	private final SaleDocumentService saleDocumentService;
+	private final DocumentService documentService;
 
 	@Autowired
-        public BricodepotSaleDocumentPrintServiceImpl(SaleDocumentService saleDocumentService,
-                        DocumentService documentService, CargarFacturaA4Servicio cargarFacturaA4Servicio) {
-                this.saleDocumentService = saleDocumentService;
-                this.documentService = documentService;
-                this.cargarFacturaA4Servicio = cargarFacturaA4Servicio;
-        }
+	public BricodepotSaleDocumentPrintServiceImpl(SaleDocumentService saleDocumentService, DocumentService documentService) {
+		this.saleDocumentService = saleDocumentService;
+		this.documentService = documentService;
+	}
 
 	@Override
 	public BricodepotPrintableDocument printDocument(IDatosSesion datosSesion, String documentUid, PrintDocumentDTO printRequest) throws ApiException {
 		LOGGER.debug("printDocument() - Generating sales document '{}' with mime type '{}'", documentUid, printRequest.getMimeType());
 
-                populateFiscalData(datosSesion, documentUid, printRequest);
-                applyDuplicateFlag(printRequest);
-                prepararMediosPago(printRequest);
+		populateFiscalData(datosSesion, documentUid, printRequest);
+		applyDuplicateFlag(printRequest);
 
 		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 			saleDocumentService.printDocument(outputStream, datosSesion, documentUid, printRequest);
@@ -135,41 +130,17 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 		}
 	}
 
-        private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
-                if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
-                        return;
-                }
+	private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
+		if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
+			return;
+		}
 
-                Map<String, Object> customParams = printRequest.getCustomParams();
-                if (!customParams.containsKey(PARAM_DUPLICATE_FLAG)) {
-                        customParams.put(PARAM_DUPLICATE_FLAG, Boolean.TRUE);
-                        LOGGER.debug("applyDuplicateFlag() - Flagging document copy request with parameter '{}'", PARAM_DUPLICATE_FLAG);
-                }
-        }
-
-        private void prepararMediosPago(PrintDocumentDTO printRequest) {
-                if (printRequest == null) {
-                        return;
-                }
-
-                Map<String, Object> customParams = printRequest.getCustomParams();
-                if (customParams == null) {
-                        return;
-                }
-
-                Object ticket = customParams.get("ticket");
-                if (ticket == null) {
-                        LOGGER.debug("prepararMediosPago() - Print request does not contain a ticket parameter");
-                        return;
-                }
-
-                try {
-                        cargarFacturaA4Servicio.generarMediosPago(ticket);
-                }
-                catch (Exception exception) {
-                        LOGGER.warn("prepararMediosPago() - Unable to enrich ticket payments", exception);
-                }
-        }
+		Map<String, Object> customParams = printRequest.getCustomParams();
+		if (!customParams.containsKey(PARAM_DUPLICATE_FLAG)) {
+			customParams.put(PARAM_DUPLICATE_FLAG, Boolean.TRUE);
+			LOGGER.debug("applyDuplicateFlag() - Flagging document copy request with parameter '{}'", PARAM_DUPLICATE_FLAG);
+		}
+	}
 
 	private FiscalDocumentData extractFiscalData(byte[] content) {
 		if (content == null || content.length == 0) {
