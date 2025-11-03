@@ -311,7 +311,6 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                 result = normalizeTicketParameterType(result);
                 result = patchTicketDateFormatting(result);
                 result = patchDesgloseExpressions(result);
-                result = patchPagosDataSource(result);
                 
                 if (isPortugueseTemplate(jrxmlFile)) {
                         result = patchAtcudExpressions(result);
@@ -459,20 +458,6 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
                 return result;
         }
 
-        private String patchPagosDataSource(String content) {
-                if (StringUtils.isBlank(content) || content.contains(MEDIOS_PAGO_DATASOURCE_CLASS)) {
-                        return content;
-                }
-
-                Matcher matcher = PAGOS_DATASOURCE_PATTERN.matcher(content);
-                if (!matcher.find()) {
-                        return content;
-                }
-
-                matcher.reset();
-                return matcher.replaceAll(Matcher.quoteReplacement(MEDIOS_PAGO_DATASOURCE_REPLACEMENT));
-        }
-
         private static final String PROPERTY_REGEX =
                 "\\$P\\{ticket\\}\\.getCabecera\\(\\)\\.getFiscalData\\(\\)\\s*\\.getProperty\\(\"ATCUD\"\\)";
         private static final Pattern PROPERTY_PATTERN = Pattern.compile(PROPERTY_REGEX);
@@ -499,13 +484,6 @@ public class BricodepotDocumentPrintService extends JasperPrintServiceImpl {
         private static final Pattern DESGLOSE_ZERO_PATTERN = Pattern.compile(
                 "new java\\.math\\.BigDecimal\\(\"0\"\\)\\.setScale\\(2, java\\.math\\.RoundingMode\\.HALF_UP\\)"
         );
-        private static final String MEDIOS_PAGO_DATASOURCE_CLASS =
-                "com.comerzzia.bricodepot.api.omnichannel.api.services.documentprint.datasource.MediosPagoDataSource";
-        private static final Pattern PAGOS_DATASOURCE_PATTERN = Pattern.compile(
-                "new\\s+net\\.sf\\.jasperreports\\.engine\\.data\\.JRBeanCollectionDataSource\\((\\s*\\$P\\{ticket\\}\\s*\\.getPagos\\(\\)\\s*)\\)"
-        );
-        private static final String MEDIOS_PAGO_DATASOURCE_REPLACEMENT =
-                "new " + MEDIOS_PAGO_DATASOURCE_CLASS + "($1)";
         private static final Set<String> COD_IMP_PATCH_TEMPLATES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
                 "SubInfLineas.jrxml",
                 "SubInfLineas_CA.jrxml",
