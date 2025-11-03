@@ -12,6 +12,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -55,22 +56,23 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 	private static final String QR = "QR";
 	private static final int QR_IMAGE_SIZE = 200;
 
-        private final SaleDocumentService saleDocumentService;
-        private final DocumentService documentService;
-        public BricodepotSaleDocumentPrintServiceImpl(SaleDocumentService saleDocumentService,
-                        DocumentService documentService) {
-                this.saleDocumentService = saleDocumentService;
-                this.documentService = documentService;
-        }
+	private final SaleDocumentService saleDocumentService;
+	private final DocumentService documentService;
+
+	@Autowired
+	public BricodepotSaleDocumentPrintServiceImpl(SaleDocumentService saleDocumentService, DocumentService documentService) {
+		this.saleDocumentService = saleDocumentService;
+		this.documentService = documentService;
+	}
 
 	@Override
 	public BricodepotPrintableDocument printDocument(IDatosSesion datosSesion, String documentUid, PrintDocumentDTO printRequest) throws ApiException {
 		LOGGER.debug("printDocument() - Generating sales document '{}' with mime type '{}'", documentUid, printRequest.getMimeType());
 
-                populateFiscalData(datosSesion, documentUid, printRequest);
-                applyDuplicateFlag(printRequest);
+		populateFiscalData(datosSesion, documentUid, printRequest);
+		applyDuplicateFlag(printRequest);
 
-                try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 			saleDocumentService.printDocument(outputStream, datosSesion, documentUid, printRequest);
 
 			String outputDocumentName = printRequest.getOutputDocumentName();
@@ -128,17 +130,17 @@ public class BricodepotSaleDocumentPrintServiceImpl implements BricodepotSaleDoc
 		}
 	}
 
-        private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
-                if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
-                        return;
-                }
+	private void applyDuplicateFlag(PrintDocumentDTO printRequest) {
+		if (printRequest == null || !Boolean.TRUE.equals(printRequest.getCopy())) {
+			return;
+		}
 
-                Map<String, Object> customParams = printRequest.getCustomParams();
-                if (!customParams.containsKey(PARAM_DUPLICATE_FLAG)) {
-                        customParams.put(PARAM_DUPLICATE_FLAG, Boolean.TRUE);
-                        LOGGER.debug("applyDuplicateFlag() - Flagging document copy request with parameter '{}'", PARAM_DUPLICATE_FLAG);
-                }
-        }
+		Map<String, Object> customParams = printRequest.getCustomParams();
+		if (!customParams.containsKey(PARAM_DUPLICATE_FLAG)) {
+			customParams.put(PARAM_DUPLICATE_FLAG, Boolean.TRUE);
+			LOGGER.debug("applyDuplicateFlag() - Flagging document copy request with parameter '{}'", PARAM_DUPLICATE_FLAG);
+		}
+	}
 
 	private FiscalDocumentData extractFiscalData(byte[] content) {
 		if (content == null || content.length == 0) {
