@@ -111,11 +111,23 @@ public class CouponUse extends CouponUseKey {
         this.lockDate = lockDate;
     }
 
-   public BigDecimal getTotalSale() {
-      return totalSale;
-   }
+    public BigDecimal getTotalSale() {
+        return totalSale;
+    }
 
-   public void setTotalSale(BigDecimal totalSale) {
-      this.totalSale = totalSale;
-   }
+    public void setTotalSale(BigDecimal totalSale) {
+        this.totalSale = totalSale;
+    }
+
+    @Override
+    @XmlElement
+    public String getClassId() {
+        return super.getClassId();
+    }
+
+    @Override
+    @XmlElement
+    public String getObjectId() {
+        return super.getObjectId();
+    }
 }
