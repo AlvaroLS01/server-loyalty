@@ -6,6 +6,8 @@ import com.comerzzia.api.loyalty.persistence.coupons.uses.CouponUse;
 public class CouponDTO extends Coupon {
    protected String loyalCustomerId;
    protected CouponUse uses;
+   protected String storeId;
+   protected String ticketUid;
    protected PromotionDTO promotion;
 
    public String getLoyalCustomerId() {
@@ -22,6 +24,22 @@ public class CouponDTO extends Coupon {
 
    public void setUses(CouponUse uses) {
       this.uses = uses;
+   }
+
+   public String getStoreId() {
+      return storeId;
+   }
+
+   public void setStoreId(String storeId) {
+      this.storeId = storeId == null ? null : storeId.trim();
+   }
+
+   public String getTicketUid() {
+      return ticketUid;
+   }
+
+   public void setTicketUid(String ticketUid) {
+      this.ticketUid = ticketUid == null ? null : ticketUid.trim();
    }
 
    public PromotionDTO getPromotion() {
